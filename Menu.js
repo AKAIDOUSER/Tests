@@ -80,7 +80,7 @@ settings.essayTopic=settings.essayTopic||'Free';
 settings.savedAPIs=settings.savedAPIs||[];
 settings.selectedAPI=settings.selectedAPI||'';
 
-var aiProviders={chatgpt:{name:'ChatGPT',models:['gpt-4','gpt-4-turbo','gpt-3.5-turbo']},gemini:{name:'Gemini',models:['gemini-pro','gemini-ultra']},deepseek:{name:'DeepSeek',models:['deepseek-chat','deepseek-coder']},mistral:{name:'Mistral',models:['mistral-large','mistral-medium','mistral-small']}};
+var aiProviders={chatgpt:'ChatGPT',gemini:'Gemini',deepseek:'DeepSeek',mistral:'Mistral'};
 
 // ========== FLOATING BUTTON ==========
 var floatBtn=d.createElement('div');
@@ -171,7 +171,7 @@ function showAPI(){
     savedSelect.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;cursor:pointer;box-sizing:border-box;margin-bottom:8px;';
     var emptyOpt=d.createElement('option');emptyOpt.value='';emptyOpt.textContent='Select saved API...';savedSelect.appendChild(emptyOpt);
     settings.savedAPIs.forEach(function(api,i){
-      var o=d.createElement('option');o.value=i;o.textContent=api.name+' - '+aiProviders[api.provider].name+' - '+api.model;
+      var o=d.createElement('option');o.value=i;o.textContent=api.name+' - '+api.provider;
       if(String(i)===String(settings.selectedAPI))o.selected=true;
       savedSelect.appendChild(o);
     });
@@ -217,31 +217,22 @@ function showAPI(){
   contentArea.appendChild(apiRow);
   
   // Provider dropdown
-  var providerSelect=d.createElement('select');
-  providerSelect.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;cursor:pointer;box-sizing:border-box;margin-bottom:6px;';
-  Object.keys(aiProviders).forEach(function(k){var o=d.createElement('option');o.value=k;o.textContent=aiProviders[k].name;providerSelect.appendChild(o)});
-  
-  var modelSelect=d.createElement('select');
-  modelSelect.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;cursor:pointer;box-sizing:border-box;margin-bottom:8px;';
-  function updateModels(){modelSelect.innerHTML='';var p=aiProviders[providerSelect.value];if(p){p.models.forEach(function(m){var o=d.createElement('option');o.value=m;o.textContent=m;modelSelect.appendChild(o)})}}
-  providerSelect.addEventListener('change',updateModels);updateModels();
-  
   var provLabel=d.createElement('label');provLabel.style.cssText='font-size:11px;color:#666;display:block;margin-bottom:4px;font-family:Inter,sans-serif;';provLabel.textContent='AI Provider';
   contentArea.appendChild(provLabel);
-  contentArea.appendChild(providerSelect);
   
-  var modelLabel=d.createElement('label');modelLabel.style.cssText='font-size:11px;color:#666;display:block;margin-bottom:4px;font-family:Inter,sans-serif;';modelLabel.textContent='AI Model';
-  contentArea.appendChild(modelLabel);
-  contentArea.appendChild(modelSelect);
+  var providerSelect=d.createElement('select');
+  providerSelect.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;cursor:pointer;box-sizing:border-box;margin-bottom:8px;';
+  Object.keys(aiProviders).forEach(function(k){var o=d.createElement('option');o.value=k;o.textContent=aiProviders[k];providerSelect.appendChild(o)});
+  contentArea.appendChild(providerSelect);
   
   var addBtn=d.createElement('button');addBtn.textContent='Add API';
   addBtn.style.cssText='width:100%;height:38px;border-radius:10px;font-size:12px;font-weight:500;cursor:pointer;font-family:Inter,sans-serif;transition:0.3s;border:1px solid #2a2a2a;background:transparent;color:#888;';
   addBtn.addEventListener('mouseenter',function(){addBtn.style.borderColor='#444';addBtn.style.color='#bbb'});
   addBtn.addEventListener('mouseleave',function(){addBtn.style.borderColor='#2a2a2a';addBtn.style.color='#888'});
   addBtn.addEventListener('click',function(){
-    var name=nameInput.value;var key=apiInput.value;var prov=providerSelect.value;var model=modelSelect.value;
+    var name=nameInput.value;var key=apiInput.value;var prov=providerSelect.value;
     if(!name||!key){notify('Fill all fields','error',2000);return}
-    settings.savedAPIs.push({name:name,key:key,provider:prov,model:model});saveSettings(settings);
+    settings.savedAPIs.push({name:name,key:key,provider:aiProviders[prov]});saveSettings(settings);
     nameInput.value='';apiInput.value='';notify('API saved: '+name,'success',4000);showAPI()
   });
   contentArea.appendChild(addBtn);
