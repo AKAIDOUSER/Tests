@@ -17,15 +17,10 @@ function getDeviceId(){
   }catch(e){return 'D-'+Date.now()}
 }
 
-function calcExp(plan){
-  if(!plan||!plan.number||!plan.type)return 999999;
-  var n=parseInt(plan.number);
-  if(isNaN(n)||n<1)return 999999;
-  var t=plan.type.toLowerCase();
-  var a=Math.floor(Date.now()/1000);
-  var m={min:60,minutos:60,minutes:60,h:3600,horas:3600,hours:3600,d:86400,dias:86400,days:86400,meses:2592000,months:2592000,anos:31536000,years:31536000};
-  if(t==='infinite')return 999999;
-  return m[t]?a+(n*m[t]):999999
+function calcExp(dias){
+  var d=parseInt(dias);
+  if(isNaN(d)||d<1)return 999999;
+  return Math.floor(Date.now()/1000)+(d*86400)
 }
 
 function fmtT(ts){
@@ -35,108 +30,84 @@ function fmtT(ts){
   if(r<=0)return '❌ Expirado';
   var d=Math.floor(r/86400);
   var h=Math.floor((r%86400)/3600);
-  var min=Math.floor((r%3600)/60);
+  var m=Math.floor((r%3600)/60);
   var dt=new Date(ts*1000);
   var ds=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
   var dia=ds[dt.getDay()];
   var hh=String(dt.getHours()).padStart(2,'0');
   var mm=String(dt.getMinutes()).padStart(2,'0');
   if(r<60)return r+'s';
-  if(r<3600)return min+'min';
-  if(r<86400)return h+'h '+min+'min';
+  if(r<3600)return m+'min';
+  if(r<86400)return h+'h '+m+'min';
   return dia+' '+hh+':'+mm+' ('+d+'D '+h+'h)'
-}
-
-function toTs(dh){
-  var p=dh.split(' ');
-  var d=p[0].split('/');
-  var h=p[1]?p[1].split(':'):['0','0'];
-  return Math.floor(new Date(d[2],d[1]-1,d[0],h[0]||0,h[1]||0,0).getTime()/1000)
 }
 
 var deviceId=getDeviceId();
 
-fetch(fb+'/settings.json?auth='+ak).then(function(r){return r.json()}).then(function(s){
-  s=s||{};
+fetch(fb+'/Users.json?auth='+ak).then(function(r){return r.json()}).then(function(users){
+  users=users||{};
+  var user=null;
   
-  if(s.maintenance&&s.pauseActive){
-    alert('🔧 Sistema em manutenção!');
+  Object.keys(users).forEach(function(k){
+    var u=users[k];
+    if(u.Profile&&u.Profile.Email&&u.Profile.Email.toLowerCase()===email.toLowerCase()){user=u;user.key=k}
+  });
+  
+  if(!user){alert('❌ Email não cadastrado!');return}
+  
+  var profile=user.Profile||{};
+  var plan=user.Plan||{};
+  var ai=user.AI||{};
+  var agora=Math.floor(Date.now()/1000);
+  var duracao=plan.Duracion;
+  var updates={};
+  var statusChanged=false;
+  
+  if(profile.Status==='Banned'){
+    alert('🚫 CONTA BANIDA\n\nSua conta foi suspensa permanentemente.');
     return
   }
   
-  if(s.maintenance&&!s.pauseActive&&s.pauseStart&&s.pauseEnd){
-    var inicio=toTs(s.pauseStart);
-    var fim=toTs(s.pauseEnd);
-    var pausa=fim-inicio;
-    
-    if(pausa>0){
-      fetch(fb+'/users.json?auth='+ak).then(function(r){return r.json()}).then(function(users){
-        users=users||{};
-        var updates={};
-        var count=0;
-        
-        Object.keys(users).forEach(function(k){
-          var u=users[k];
-          if(u.subscription&&u.subscription.expiresAt&&u.subscription.expiresAt!==999999&&u.subscription.expiresAt!==0){
-            updates['users/'+k+'/subscription/expiresAt']=u.subscription.expiresAt+pausa;
-            updates['users/'+k+'/subscription/pausedTotal']=(u.subscription.pausedTotal||0)+pausa;
-            count++;
-          }
-        });
-        
-        updates['settings/maintenance']=false;
-        updates['settings/pauseActive']=false;
-        updates['settings/pauseStart']='';
-        updates['settings/pauseEnd']='';
-        
-        fetch(fb+'/.json?auth='+ak,{method:'PATCH',body:JSON.stringify(updates)}).then(function(){
-          alert('✅ Manutenção finalizada!\n+'+Math.floor(pausa/3600)+'h '+Math.floor((pausa%3600)/60)+'min para '+count+' usuários');
-        });
-      });
-      return
-    }
+  if(profile.Status==='Disabled'){
+    alert('🚫 CONTA DESATIVADA\n\nSua conta foi desativada. Entre em contato para reativar.');
+    return
   }
   
-  fetch(fb+'/users.json?auth='+ak).then(function(r){return r.json()}).then(function(users){
-    users=users||{};
-    var user=null;
+  var isFirstTime=(!profile.Uid||profile.Uid===''||!duracao||duracao==='');
+  
+  if(isFirstTime){
+    updates['Users/'+user.key+'/Profile/Uid']=deviceId;
+    updates['Users/'+user.key+'/Profile/Status']='Active';
+    updates['Users/'+user.key+'/Plan/Duracion']=calcExp(plan['Validity-Days']);
     
-    Object.keys(users).forEach(function(k){
-      if(users[k].email&&users[k].email.toLowerCase()===email.toLowerCase()){user=users[k];user.key=k}
-    });
-    
-    if(!user){alert('❌ Email não cadastrado!\n\n'+email);return}
-    
-    var sub=user.subscription||{};
-    var hasDeviceId=user.deviceId&&user.deviceId!=='';
-    var hasExpiresAt=sub.expiresAt&&sub.expiresAt!==0;
-    
-    if(!hasDeviceId||!hasExpiresAt){
-      var updates={};
-      updates['users/'+user.key+'/deviceId']=deviceId;
-      if(!user.name||user.name==='')updates['users/'+user.key+'/name']=nome;
-      updates['users/'+user.key+'/subscription/startedAt']=Math.floor(Date.now()/1000);
-      updates['users/'+user.key+'/subscription/expiresAt']=calcExp(user.plan);
-      updates['users/'+user.key+'/subscription/pausedTotal']=0;
-      
-      fetch(fb+'/.json?auth='+ak,{method:'PATCH',body:JSON.stringify(updates)}).then(function(){
-        alert('✅ Bem-vindo, '+user.user+'!\n\nAssinatura ativada!')
-      }).catch(function(e){alert('Erro ao salvar: '+e.message)});
-      return
-    }
-    
-    if(user.deviceId!==deviceId){
-      alert('❌ Dispositivo não autorizado!');
-      return
-    }
-    
-    var agora=Math.floor(Date.now()/1000);
-    if(sub.expiresAt!==999999&&agora>sub.expiresAt){
-      alert('❌ Assinatura expirada!\n'+fmtT(sub.expiresAt));
-      return
-    }
-    
-    alert('✅ Bem-vindo, '+user.user+'!\n\n👑 '+user.type+'\n⏰ '+fmtT(sub.expiresAt)+'\n🤖 IA: '+(user.ia&&user.ia.api?'Configurada':'Não'))
-  }).catch(function(e){alert('Erro: '+e.message)})
-}).catch(function(e){alert('Erro: '+e.message)})
+    fetch(fb+'/.json?auth='+ak,{method:'PATCH',body:JSON.stringify(updates)}).then(function(){
+      alert('✅ Bem-vindo, '+profile.Username+'!\n\n👑 '+profile.Patent+'\n📅 '+plan.Type+'\n⏰ '+fmtT(calcExp(plan['Validity-Days'])))
+    }).catch(function(){alert('Erro ao salvar!')});
+    return
+  }
+  
+  if(profile.Uid!==deviceId){
+    alert('❌ DISPOSITIVO NÃO AUTORIZADO\n\nConta vinculada a outro dispositivo.');
+    return
+  }
+  
+  if(duracao!==999999&&duracao!==0&&agora>duracao&&profile.Status!=='Expired'){
+    updates['Users/'+user.key+'/Profile/Status']='Expired';
+    statusChanged=true;
+  }
+  
+  if(statusChanged){
+    fetch(fb+'/.json?auth='+ak,{method:'PATCH',body:JSON.stringify(updates)}).then(function(){
+      alert('❌ ASSINATURA EXPIRADA\n\nSua assinatura expirou e seu Status foi atualizado para "Expired".\n\n⏰ '+fmtT(duracao)+'\n\nRenove para continuar.')
+    }).catch(function(){alert('Erro ao atualizar status!')});
+    return
+  }
+  
+  if(profile.Status==='Expired'){
+    alert('❌ ASSINATURA EXPIRADA\n\nSua conta está marcada como expirada.\n⏰ '+fmtT(duracao)+'\n\nRenove para continuar.');
+    return
+  }
+  
+  alert('✅ Bem-vindo, '+profile.Username+'!\n\n👑 '+profile.Patent+'\n📅 '+plan.Type+'\n⏰ '+fmtT(duracao)+'\n🤖 '+(ai.API?'Configurada':'Não configurada'))
+}).catch(function(){alert('❌ Erro de conexão!')})
 })();
