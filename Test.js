@@ -1,1 +1,142 @@
-void((function(){if(!location.hostname.includes('redacao.pr.gov.br')){alert('Este script só funciona no site Redação Paraná.');return}function decodificarToken(t){try{var p=t.split('.');if(p.length===3)return JSON.parse(atob(p[1]))}catch(e){return null}return null}function codificarToken(payload){var h={alg:'HS256',typ:'JWT'};var header=btoa(JSON.stringify(h)).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');var body=btoa(JSON.stringify(payload)).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');return header+'.'+body+'.ORIGINAL'}var acao=prompt('O que deseja fazer?\n\n1 - Ver dados atuais\n2 - Editar dados VISUAIS (localStorage)\n3 - Editar dados do TOKEN JWT\n4 - Restaurar dados originais (backup)\n\nDigite o número:');if(!acao)return;if(acao==='1'){var info='=== DADOS VISUAIS (localStorage) ===\n\n';info+='Name: '+(localStorage.getItem('Name')||'Vazio')+'\n';info+='Email: '+(localStorage.getItem('Email')||'Vazio')+'\n';info+='ProfileId: '+(localStorage.getItem('ProfileId')||'Vazio')+'\n';info+='IsReadOnly: '+(localStorage.getItem('IsReadOnly')||'Vazio')+'\n';info+='Tipo Conta: '+(localStorage.getItem('AccountType')||localStorage.getItem('Role')||localStorage.getItem('UserType')||'Não definido')+'\n';info+='ExpiresAt: '+(localStorage.getItem('ExpiresAt')||'Vazio');if(localStorage.getItem('ExpiresAt')){info+=' ('+new Date(parseInt(localStorage.getItem('ExpiresAt'))*1000).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'})+')'}info+='\nRefreshToken: '+(localStorage.getItem('RefreshToken')||'Vazio')+'\n';var token=localStorage.getItem('Token');info+='Token: '+(token?token.substring(0,50)+'...':'Vazio');if(token){var payload=decodificarToken(token);if(payload){info+='\n\n=== DADOS DO TOKEN (JWT) ===';info+='\nunique_name: '+(payload.unique_name||'Não encontrado');info+='\nemail: '+(payload.email||'Não encontrado');info+='\nsub: '+(payload.sub||'Não encontrado');info+='\nsid: '+(payload.sid||'Não encontrado');info+='\nrole: '+(payload.role||payload.Role||payload.userType||'Não encontrado');info+='\nexp: '+(payload.exp?new Date(payload.exp*1000).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}):'Não encontrado');info+='\niat: '+(payload.iat?new Date(payload.iat*1000).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}):'Não encontrado');var outras=[];for(var key in payload){if(['unique_name','sub','email','sid','exp','iat','role','Role','userType'].indexOf(key)===-1){outras.push(key+': '+payload[key])}}if(outras.length>0){info+='\n\nOutros campos: '+outras.join(', ')}}}else{info+='\n\nToken não é JWT válido'}}alert(info)}else if(acao==='2'){var campo=prompt('EDITAR DADOS VISUAIS (localStorage)\n\nEscolha o campo:\n1 - Nome\n2 - Email\n3 - Profile ID\n4 - Tipo da conta\n5 - Data de expiração\n\nDigite o número:');if(campo==='1'){var nome=prompt('Digite o novo nome:');if(nome){if(!localStorage.getItem('_backup_Name'))localStorage.setItem('_backup_Name',localStorage.getItem('Name')||'');localStorage.setItem('Name',nome);alert('Nome visual alterado para: '+nome)}}else if(campo==='2'){var email=prompt('Digite o novo email:');if(email){if(!localStorage.getItem('_backup_Email'))localStorage.setItem('_backup_Email',localStorage.getItem('Email')||'');localStorage.setItem('Email',email);alert('Email visual alterado para: '+email)}}else if(campo==='3'){var id=prompt('Digite o novo Profile ID:');if(id){if(!localStorage.getItem('_backup_ProfileId'))localStorage.setItem('_backup_ProfileId',localStorage.getItem('ProfileId')||'');localStorage.setItem('ProfileId',id);alert('Profile ID visual alterado para: '+id)}}else if(campo==='4'){var tipo=prompt('Digite o tipo da conta:\nExemplos: Admin, Professor, Aluno, Premium, Free\n\nTipo atual: '+(localStorage.getItem('AccountType')||localStorage.getItem('Role')||localStorage.getItem('UserType')||'Não definido'));if(tipo){if(!localStorage.getItem('_backup_IsReadOnly'))localStorage.setItem('_backup_IsReadOnly',localStorage.getItem('IsReadOnly')||'');if(!localStorage.getItem('_backup_AccountType'))localStorage.setItem('_backup_AccountType',localStorage.getItem('AccountType')||localStorage.getItem('Role')||localStorage.getItem('UserType')||'');localStorage.setItem('IsReadOnly',tipo.toLowerCase()==='aluno'||tipo.toLowerCase()==='free'?'undefined':'');localStorage.setItem('AccountType',tipo);localStorage.setItem('Role',tipo);localStorage.setItem('UserType',tipo);alert('Tipo da conta alterado para: '+tipo)}}else if(campo==='5'){var expAtual=localStorage.getItem('ExpiresAt');var expData=expAtual?new Date(parseInt(expAtual)*1000).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}):'Não definida';var opcao=prompt('Como deseja definir a expiração?\n\n1 - Data e hora personalizada (dd/mm/aaaa hh:mm)\n2 - Minutos a partir de agora\n3 - Horas a partir de agora\n4 - Dias a partir de hoje\n5 - Nunca expira (ano 2099)\n6 - Valor Unix timestamp\n\nExpiração atual: '+expData+'\n\nDigite o número:');if(opcao==='1'){var dh=prompt('Digite data e hora (dd/mm/aaaa hh:mm):\nExemplo: 31/12/2026 23:59');if(dh){var p=dh.split(' ');var d=p[0].split('/');var h=p[1]?p[1].split(':'):['23','59'];var dt=new Date(parseInt(d[2]),parseInt(d[1])-1,parseInt(d[0]),parseInt(h[0])||23,parseInt(h[1])||59,0);var u=Math.floor(dt.getTime()/1000);if(!localStorage.getItem('_backup_ExpiresAt'))localStorage.setItem('_backup_ExpiresAt',localStorage.getItem('ExpiresAt')||'');localStorage.setItem('ExpiresAt',u);alert('Expiração visual alterada para: '+dt.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}))}}else if(opcao==='2'){var min=parseInt(prompt('Minutos a partir de agora:'));if(min>0){var dt=new Date();dt.setMinutes(dt.getMinutes()+min);var u=Math.floor(dt.getTime()/1000);if(!localStorage.getItem('_backup_ExpiresAt'))localStorage.setItem('_backup_ExpiresAt',localStorage.getItem('ExpiresAt')||'');localStorage.setItem('ExpiresAt',u);alert('Expiração visual alterada para: '+dt.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}))}}else if(opcao==='3'){var h=parseFloat(prompt('Horas a partir de agora (ex: 2.5):'));if(h>0){var dt=new Date();dt.setHours(dt.getHours()+Math.floor(h));dt.setMinutes(dt.getMinutes()+Math.round((h%1)*60));var u=Math.floor(dt.getTime()/1000);if(!localStorage.getItem('_backup_ExpiresAt'))localStorage.setItem('_backup_ExpiresAt',localStorage.getItem('ExpiresAt')||'');localStorage.setItem('ExpiresAt',u);alert('Expiração visual alterada para: '+dt.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}))}}else if(opcao==='4'){var d=parseInt(prompt('Dias a partir de hoje:'));if(d>0){var dt=new Date();dt.setDate(dt.getDate()+d);var u=Math.floor(dt.getTime()/1000);if(!localStorage.getItem('_backup_ExpiresAt'))localStorage.setItem('_backup_ExpiresAt',localStorage.getItem('ExpiresAt')||'');localStorage.setItem('ExpiresAt',u);alert('Expiração visual alterada para: '+dt.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}))}}else if(opcao==='5'){var u=4102444800;if(!localStorage.getItem('_backup_ExpiresAt'))localStorage.setItem('_backup_ExpiresAt',localStorage.getItem('ExpiresAt')||'');localStorage.setItem('ExpiresAt',u);alert('Expiração visual alterada para: 31/12/2099 23:59:59')}else if(opcao==='6'){var u=prompt('Digite o Unix timestamp:');if(u&&!isNaN(u)){if(!localStorage.getItem('_backup_ExpiresAt'))localStorage.setItem('_backup_ExpiresAt',localStorage.getItem('ExpiresAt')||'');localStorage.setItem('ExpiresAt',u);alert('Expiração visual alterada para: '+new Date(parseInt(u)*1000).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}))}}}}else if(acao==='3'){var token=localStorage.getItem('Token');if(!token){alert('Token não encontrado! Faça login primeiro.');return}var payload=decodificarToken(token);if(!payload){alert('Token não é JWT válido!');return}var campo=prompt('EDITAR DADOS DO TOKEN JWT\n\nEscolha o campo:\n1 - unique_name (nome): '+(payload.unique_name||'')+'\n2 - email: '+(payload.email||'')+'\n3 - sub (assunto): '+(payload.sub||'')+'\n4 - sid (ID): '+(payload.sid||'')+'\n5 - role (tipo): '+(payload.role||payload.Role||payload.userType||'')+'\n6 - exp (expiração): '+(payload.exp?new Date(payload.exp*1000).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}):'')+'\n7 - iat (criado em): '+(payload.iat?new Date(payload.iat*1000).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}):'')+'\n\nDigite o número:');if(campo==='1'){var v=prompt('Digite o novo unique_name:');if(v){if(!localStorage.getItem('_backup_Token'))localStorage.setItem('_backup_Token',token);payload.unique_name=v;localStorage.setItem('Token',codificarToken(payload));alert('unique_name do token alterado para: '+v+'\n\n⚠️ A assinatura do token foi quebrada. O servidor pode rejeitar.')}}else if(campo==='2'){var v=prompt('Digite o novo email:');if(v){if(!localStorage.getItem('_backup_Token'))localStorage.setItem('_backup_Token',token);payload.email=v;localStorage.setItem('Token',codificarToken(payload));alert('email do token alterado para: '+v+'\n\n⚠️ A assinatura do token foi quebrada. O servidor pode rejeitar.')}}else if(campo==='3'){var v=prompt('Digite o novo sub:');if(v){if(!localStorage.getItem('_backup_Token'))localStorage.setItem('_backup_Token',token);payload.sub=v;localStorage.setItem('Token',codificarToken(payload));alert('sub do token alterado para: '+v+'\n\n⚠️ A assinatura do token foi quebrada. O servidor pode rejeitar.')}}else if(campo==='4'){var v=prompt('Digite o novo sid:');if(v){if(!localStorage.getItem('_backup_Token'))localStorage.setItem('_backup_Token',token);payload.sid=v;localStorage.setItem('Token',codificarToken(payload));alert('sid do token alterado para: '+v+'\n\n⚠️ A assinatura do token foi quebrada. O servidor pode rejeitar.')}}else if(campo==='5'){var v=prompt('Digite o novo role (ex: Admin, Professor, Aluno):');if(v){if(!localStorage.getItem('_backup_Token'))localStorage.setItem('_backup_Token',token);if(payload.role)payload.role=v;if(payload.Role)payload.Role=v;if(payload.userType)payload.userType=v;localStorage.setItem('Token',codificarToken(payload));alert('role do token alterado para: '+v+'\n\n⚠️ A assinatura do token foi quebrada. O servidor pode rejeitar.')}}else if(campo==='6'){var expAtual=payload.exp?new Date(payload.exp*1000).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}):'Não definida';var opcao=prompt('Como definir a expiração do token?\n\n1 - Data e hora (dd/mm/aaaa hh:mm)\n2 - Minutos a partir de agora\n3 - Horas a partir de agora\n4 - Dias a partir de hoje\n5 - Nunca expira\n6 - Unix timestamp\n\nAtual: '+expAtual+'\n\nDigite o número:');if(opcao==='1'){var dh=prompt('Digite data e hora (dd/mm/aaaa hh:mm):');if(dh){var p=dh.split(' ');var d=p[0].split('/');var h=p[1]?p[1].split(':'):['23','59'];var dt=new Date(parseInt(d[2]),parseInt(d[1])-1,parseInt(d[0]),parseInt(h[0])||23,parseInt(h[1])||59,0);if(!localStorage.getItem('_backup_Token'))localStorage.setItem('_backup_Token',token);payload.exp=Math.floor(dt.getTime()/1000);localStorage.setItem('Token',codificarToken(payload));alert('exp do token alterado para: '+dt.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}))}}else if(opcao==='2'){var m=parseInt(prompt('Minutos a partir de agora:'));if(m>0){var dt=new Date();dt.setMinutes(dt.getMinutes()+m);if(!localStorage.getItem('_backup_Token'))localStorage.setItem('_backup_Token',token);payload.exp=Math.floor(dt.getTime()/1000);localStorage.setItem('Token',codificarToken(payload));alert('exp do token alterado para: '+dt.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}))}}else if(opcao==='3'){var h=parseFloat(prompt('Horas a partir de agora (ex: 2.5):'));if(h>0){var dt=new Date();dt.setHours(dt.getHours()+Math.floor(h));dt.setMinutes(dt.getMinutes()+Math.round((h%1)*60));if(!localStorage.getItem('_backup_Token'))localStorage.setItem('_backup_Token',token);payload.exp=Math.floor(dt.getTime()/1000);localStorage.setItem('Token',codificarToken(payload));alert('exp do token alterado para: '+dt.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}))}}else if(opcao==='4'){var d=parseInt(prompt('Dias a partir de hoje:'));if(d>0){var dt=new Date();dt.setDate(dt.getDate()+d);if(!localStorage.getItem('_backup_Token'))localStorage.setItem('_backup_Token',token);payload.exp=Math.floor(dt.getTime()/1000);localStorage.setItem('Token',codificarToken(payload));alert('exp do token alterado para: '+dt.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}))}}else if(opcao==='5'){if(!localStorage.getItem('_backup_Token'))localStorage.setItem('_backup_Token',token);payload.exp=4102444800;localStorage.setItem('Token',codificarToken(payload));alert('exp do token alterado para: 31/12/2099 23:59:59')}else if(opcao==='6'){var u=prompt('Digite o Unix timestamp:');if(u&&!isNaN(u)){if(!localStorage.getItem('_backup_Token'))localStorage.setItem('_backup_Token',token);payload.exp=parseInt(u);localStorage.setItem('Token',codificarToken(payload));alert('exp do token alterado para: '+new Date(parseInt(u)*1000).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}))}}}else if(campo==='7'){var iatAtual=payload.iat?new Date(payload.iat*1000).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}):'Não definida';var opcao=prompt('Como definir a criação (iat) do token?\n\n1 - Data e hora (dd/mm/aaaa hh:mm)\n2 - Agora\n3 - Unix timestamp\n\nAtual: '+iatAtual+'\n\nDigite o número:');if(opcao==='1'){var dh=prompt('Digite data e hora (dd/mm/aaaa hh:mm):');if(dh){var p=dh.split(' ');var d=p[0].split('/');var h=p[1]?p[1].split(':'):['23','59'];var dt=new Date(parseInt(d[2]),parseInt(d[1])-1,parseInt(d[0]),parseInt(h[0])||23,parseInt(h[1])||59,0);if(!localStorage.getItem('_backup_Token'))localStorage.setItem('_backup_Token',token);payload.iat=Math.floor(dt.getTime()/1000);localStorage.setItem('Token',codificarToken(payload));alert('iat do token alterado para: '+dt.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}))}}else if(opcao==='2'){if(!localStorage.getItem('_backup_Token'))localStorage.setItem('_backup_Token',token);payload.iat=Math.floor(Date.now()/1000);localStorage.setItem('Token',codificarToken(payload));alert('iat do token alterado para: agora')}else if(opcao==='3'){var u=prompt('Digite o Unix timestamp:');if(u&&!isNaN(u)){if(!localStorage.getItem('_backup_Token'))localStorage.setItem('_backup_Token',token);payload.iat=parseInt(u);localStorage.setItem('Token',codificarToken(payload));alert('iat do token alterado para: '+new Date(parseInt(u)*1000).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}))}}}}}else if(acao==='4'){var restaurados=[];['Name','Email','ProfileId','Token','RefreshToken','ExpiresAt','IsReadOnly','AccountType','Role','UserType'].forEach(function(key){var backup=localStorage.getItem('_backup_'+key);if(backup!==null){localStorage.setItem(key,backup);restaurados.push(key)}});alert(restaurados.length>0?'Dados restaurados: '+restaurados.join(', '):'Nenhum backup encontrado.')}else{alert('Opção inválida!')}})())
+void(function(){
+if(!location.hostname.includes('redacao.pr.gov.br')){
+  alert('Este script só funciona no site Redação Paraná.');
+  return;
+}
+
+function decodificarToken(t){
+  try{var p=t.split('.');if(p.length===3)return JSON.parse(atob(p[1]))}catch(e){}
+  return null;
+}
+
+function codificarToken(payload){
+  var h={alg:'HS256',typ:'JWT'};
+  var H=btoa(JSON.stringify(h)).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+  var B=btoa(JSON.stringify(payload)).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+  return H+'.'+B+'.ORIGINAL';
+}
+
+function dataStr(u){return u?new Date(parseInt(u)*1000).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}):'Não definida';}
+
+function editarExpiracao(callback){
+  var expAtual=localStorage.getItem('ExpiresAt');
+  var op=prompt('Definir expiração:\n1-Data e hora (dd/mm/aaaa hh:mm)\n2-Minutos\n3-Horas\n4-Dias\n5-Nunca expira\n6-Unix timestamp\n\nAtual: '+dataStr(expAtual));
+  if(!op)return;
+  if(op==='1'){
+    var dh=prompt('Data e hora (dd/mm/aaaa hh:mm):');
+    if(dh){var p=dh.split(' ');var d=p[0].split('/');var h=p[1]?p[1].split(':'):['23','59'];var dt=new Date(d[2],d[1]-1,d[0],h[0]||23,h[1]||59,0);callback(Math.floor(dt.getTime()/1000),dt.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}));}
+  }else if(op==='2'){
+    var m=parseInt(prompt('Minutos:'));
+    if(m>0){var dt=new Date();dt.setMinutes(dt.getMinutes()+m);callback(Math.floor(dt.getTime()/1000),dt.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}));}
+  }else if(op==='3'){
+    var h=parseFloat(prompt('Horas (ex: 2.5):'));
+    if(h>0){var dt=new Date();dt.setHours(dt.getHours()+Math.floor(h));dt.setMinutes(dt.getMinutes()+Math.round((h%1)*60));callback(Math.floor(dt.getTime()/1000),dt.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}));}
+  }else if(op==='4'){
+    var d=parseInt(prompt('Dias:'));
+    if(d>0){var dt=new Date();dt.setDate(dt.getDate()+d);callback(Math.floor(dt.getTime()/1000),dt.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}));}
+  }else if(op==='5'){
+    callback(4102444800,'31/12/2099 23:59:59');
+  }else if(op==='6'){
+    var u=prompt('Unix timestamp:');
+    if(u&&!isNaN(u))callback(parseInt(u),new Date(parseInt(u)*1000).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}));
+  }
+}
+
+function backup(key){
+  if(!localStorage.getItem('_backup_'+key))localStorage.setItem('_backup_'+key,localStorage.getItem(key)||'');
+}
+
+var acao=prompt('🔧 PAINEL REDAÇÃO PARANÁ\n\n1 - 📋 Ver todos os dados\n2 - 🖼️ Editar dados VISUAIS\n3 - 🔐 Editar TOKEN JWT\n4 - ♻️ Restaurar backup original\n\nDigite o número:');
+if(!acao)return;
+
+if(acao==='1'){
+  var i='=== 📦 LOCAL STORAGE ===\n\n';
+  i+='👤 Name: '+(localStorage.getItem('Name')||'Vazio')+'\n';
+  i+='📧 Email: '+(localStorage.getItem('Email')||'Vazio')+'\n';
+  i+='🆔 ProfileId: '+(localStorage.getItem('ProfileId')||'Vazio')+'\n';
+  i+='🔒 IsReadOnly: '+(localStorage.getItem('IsReadOnly')||'Vazio')+'\n';
+  i+='👑 Tipo: '+(localStorage.getItem('AccountType')||localStorage.getItem('Role')||localStorage.getItem('UserType')||'Não definido')+'\n';
+  i+='⏰ ExpiresAt: '+dataStr(localStorage.getItem('ExpiresAt'))+'\n';
+  i+='🔄 RefreshToken: '+(localStorage.getItem('RefreshToken')||'Vazio')+'\n';
+  var token=localStorage.getItem('Token');
+  i+='🎫 Token: '+(token?token.substring(0,50)+'...':'Vazio');
+  
+  if(token){
+    var payload=decodificarToken(token);
+    if(payload){
+      i+='\n\n=== 🔐 TOKEN JWT ===\n';
+      i+='👤 unique_name: '+(payload.unique_name||'N/D')+'\n';
+      i+='📧 email: '+(payload.email||'N/D')+'\n';
+      i+='📝 sub: '+(payload.sub||'N/D')+'\n';
+      i+='🆔 sid: '+(payload.sid||'N/D')+'\n';
+      i+='👑 role: '+(payload.role||payload.Role||payload.userType||'N/D')+'\n';
+      i+='⏰ exp: '+dataStr(payload.exp)+'\n';
+      i+='🕐 iat: '+dataStr(payload.iat);
+    }
+  }
+  alert(i);
+  
+}else if(acao==='2'){
+  var c=prompt('EDITAR VISUAIS\n\n1-👤 Nome\n2-📧 Email\n3-🆔 Profile ID\n4-👑 Tipo da conta\n5-⏰ Expiração');
+  if(c==='1'){var v=prompt('Novo nome:');if(v){backup('Name');localStorage.setItem('Name',v);alert('✅ Nome: '+v);}}
+  else if(c==='2'){var v=prompt('Novo email:');if(v){backup('Email');localStorage.setItem('Email',v);alert('✅ Email: '+v);}}
+  else if(c==='3'){var v=prompt('Novo Profile ID:');if(v){backup('ProfileId');localStorage.setItem('ProfileId',v);alert('✅ ID: '+v);}}
+  else if(c==='4'){
+    var v=prompt('Novo tipo (Admin, Professor, Aluno, Premium, Free):');
+    if(v){
+      backup('AccountType');backup('IsReadOnly');
+      localStorage.setItem('AccountType',v);
+      localStorage.setItem('Role',v);
+      localStorage.setItem('UserType',v);
+      localStorage.setItem('IsReadOnly',v.toLowerCase()==='aluno'||v.toLowerCase()==='free'?'undefined':'');
+      alert('✅ Tipo: '+v);
+    }
+  }else if(c==='5'){
+    backup('ExpiresAt');
+    editarExpiracao(function(unix,data){
+      localStorage.setItem('ExpiresAt',unix);
+      alert('✅ Expiração: '+data);
+    });
+  }
+  
+}else if(acao==='3'){
+  var token=localStorage.getItem('Token');
+  if(!token){alert('❌ Token não encontrado!');return;}
+  var payload=decodificarToken(token);
+  if(!payload){alert('❌ Token inválido!');return;}
+  
+  var c=prompt('EDITAR TOKEN JWT\n\n1-👤 unique_name: '+(payload.unique_name||'N/D')+'\n2-📧 email: '+(payload.email||'N/D')+'\n3-📝 sub: '+(payload.sub||'N/D')+'\n4-🆔 sid: '+(payload.sid||'N/D')+'\n5-👑 role: '+(payload.role||payload.Role||payload.userType||'N/D')+'\n6-⏰ exp: '+dataStr(payload.exp)+'\n7-🕐 iat: '+dataStr(payload.iat));
+  if(!c)return;
+  
+  backup('Token');
+  
+  if(c==='1'){var v=prompt('unique_name:');if(v){payload.unique_name=v;}}
+  else if(c==='2'){var v=prompt('email:');if(v){payload.email=v;}}
+  else if(c==='3'){var v=prompt('sub:');if(v){payload.sub=v;}}
+  else if(c==='4'){var v=prompt('sid:');if(v){payload.sid=v;}}
+  else if(c==='5'){
+    var v=prompt('role (Admin, Professor, Aluno):');
+    if(v){if(payload.role)payload.role=v;if(payload.Role)payload.Role=v;if(payload.userType)payload.userType=v;}
+  }else if(c==='6'){
+    editarExpiracao(function(unix){payload.exp=unix;});
+  }else if(c==='7'){
+    var o=prompt('Definir iat:\n1-Data (dd/mm/aaaa hh:mm)\n2-Agora\n3-Unix');
+    if(o==='1'){var dh=prompt('Data e hora:');if(dh){var p=dh.split(' ');var d=p[0].split('/');var h=p[1]?p[1].split(':'):['23','59'];payload.iat=Math.floor(new Date(d[2],d[1]-1,d[0],h[0]||23,h[1]||59,0).getTime()/1000);}}
+    else if(o==='2'){payload.iat=Math.floor(Date.now()/1000);}
+    else if(o==='3'){var u=prompt('Unix:');if(u&&!isNaN(u))payload.iat=parseInt(u);}
+  }else{return;}
+  
+  localStorage.setItem('Token',codificarToken(payload));
+  alert('✅ Token JWT alterado!\n\n⚠️ A assinatura foi quebrada. O servidor rejeitará este token em requisições.');
+  
+}else if(acao==='4'){
+  var restaurados=[];
+  ['Name','Email','ProfileId','Token','RefreshToken','ExpiresAt','IsReadOnly','AccountType','Role','UserType'].forEach(function(k){
+    var b=localStorage.getItem('_backup_'+k);
+    if(b!==null){localStorage.setItem(k,b);restaurados.push(k);}
+  });
+  alert(restaurados.length>0?'✅ Restaurados: '+restaurados.join(', '):'❌ Nenhum backup.');
+}else{
+  alert('❌ Opção inválida!');
+}
+})();
