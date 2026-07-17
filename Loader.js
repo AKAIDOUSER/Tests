@@ -24,10 +24,10 @@ function calcExp(dias){
 }
 
 function fmtT(ts){
-  if(ts===999999||ts===0)return '♾️ Vitalício';
+  if(ts===999999||ts===0)return 'Vitalício';
   var a=Math.floor(Date.now()/1000);
   var r=ts-a;
-  if(r<=0)return '❌ Expirado';
+  if(r<=0)return 'Expirado';
   var d=Math.floor(r/86400);
   var h=Math.floor((r%86400)/3600);
   var m=Math.floor((r%3600)/60);
@@ -44,16 +44,22 @@ function fmtT(ts){
 
 var deviceId=getDeviceId();
 
-fetch(fb+'/Users.json?auth='+ak).then(function(r){return r.json()}).then(function(users){
+fetch(fb+'/Users.json?auth='+ak).then(function(r){
+  if(!r.ok)throw new Error('Erro '+r.status);
+  return r.json()
+}).then(function(users){
   users=users||{};
   var user=null;
   
   Object.keys(users).forEach(function(k){
     var u=users[k];
-    if(u.Profile&&u.Profile.Email&&u.Profile.Email.toLowerCase()===email.toLowerCase()){user=u;user.key=k}
+    if(u.Profile&&u.Profile.Email&&u.Profile.Email.toLowerCase()===email.toLowerCase()){
+      user=u;
+      user.key=k;
+    }
   });
   
-  if(!user){alert('❌ Email não cadastrado!');return}
+  if(!user){alert('Email não cadastrado!');return}
   
   var profile=user.Profile||{};
   var plan=user.Plan||{};
@@ -61,15 +67,19 @@ fetch(fb+'/Users.json?auth='+ak).then(function(r){return r.json()}).then(functio
   var agora=Math.floor(Date.now()/1000);
   var duracao=plan.Duracion;
   var updates={};
-  var statusChanged=false;
   
   if(profile.Status==='Banned'){
-    alert('🚫 CONTA BANIDA\n\nSua conta foi suspensa permanentemente.');
+    alert('CONTA BANIDA\n\nSua conta foi suspensa.');
     return
   }
   
   if(profile.Status==='Disabled'){
-    alert('🚫 CONTA DESATIVADA\n\nSua conta foi desativada. Entre em contato para reativar.');
+    alert('CONTA DESATIVADA\n\nSua conta foi desativada.');
+    return
+  }
+  
+  if(profile.Status==='Expired'){
+    alert('ASSINATURA EXPIRADA\n\n'+fmtT(duracao)+'\n\nRenove para continuar.');
     return
   }
   
@@ -81,33 +91,26 @@ fetch(fb+'/Users.json?auth='+ak).then(function(r){return r.json()}).then(functio
     updates['Users/'+user.key+'/Plan/Duracion']=calcExp(plan['Validity-Days']);
     
     fetch(fb+'/.json?auth='+ak,{method:'PATCH',body:JSON.stringify(updates)}).then(function(){
-      alert('✅ Bem-vindo, '+profile.Username+'!\n\n👑 '+profile.Patent+'\n📅 '+plan.Type+'\n⏰ '+fmtT(calcExp(plan['Validity-Days'])))
-    }).catch(function(){alert('Erro ao salvar!')});
+      alert('Bem-vindo, '+profile.Username+'!\n\n'+profile.Patent+'\n'+plan.Type+'\n'+fmtT(calcExp(plan['Validity-Days'])))
+    }).catch(function(e){alert('Erro ao salvar: '+e.message)});
     return
   }
   
   if(profile.Uid!==deviceId){
-    alert('❌ DISPOSITIVO NÃO AUTORIZADO\n\nConta vinculada a outro dispositivo.');
+    alert('DISPOSITIVO NAO AUTORIZADO\n\nConta vinculada a outro dispositivo.');
     return
   }
   
-  if(duracao!==999999&&duracao!==0&&agora>duracao&&profile.Status!=='Expired'){
+  if(duracao!==999999&&duracao!==0&&agora>duracao){
     updates['Users/'+user.key+'/Profile/Status']='Expired';
-    statusChanged=true;
-  }
-  
-  if(statusChanged){
     fetch(fb+'/.json?auth='+ak,{method:'PATCH',body:JSON.stringify(updates)}).then(function(){
-      alert('❌ ASSINATURA EXPIRADA\n\nSua assinatura expirou e seu Status foi atualizado para "Expired".\n\n⏰ '+fmtT(duracao)+'\n\nRenove para continuar.')
-    }).catch(function(){alert('Erro ao atualizar status!')});
+      alert('ASSINATURA EXPIRADA\n\nStatus atualizado para Expired.\n'+fmtT(duracao))
+    }).catch(function(e){alert('Erro: '+e.message)});
     return
   }
   
-  if(profile.Status==='Expired'){
-    alert('❌ ASSINATURA EXPIRADA\n\nSua conta está marcada como expirada.\n⏰ '+fmtT(duracao)+'\n\nRenove para continuar.');
-    return
-  }
-  
-  alert('✅ Bem-vindo, '+profile.Username+'!\n\n👑 '+profile.Patent+'\n📅 '+plan.Type+'\n⏰ '+fmtT(duracao)+'\n🤖 '+(ai.API?'Configurada':'Não configurada'))
-}).catch(function(){alert('❌ Erro de conexão!')})
+  alert('Bem-vindo, '+profile.Username+'!\n\n'+profile.Patent+'\n'+plan.Type+'\n'+fmtT(duracao)+'\nIA: '+(ai.API?'Configurada':'Nao'))
+}).catch(function(e){
+  alert('Erro de conexao: '+e.message)
+})
 })();
