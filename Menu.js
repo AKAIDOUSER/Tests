@@ -1,7 +1,7 @@
 void(function(){
 var d=document;
 
-// ========== STYLES ==========
+// ========== k ==========
 if(!d.querySelector('style[data-menu]')){
   var s=d.createElement('style');
   s.setAttribute('data-menu','true');
