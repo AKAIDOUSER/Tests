@@ -21,7 +21,7 @@ function calcD(v){
   if(isNaN(n)||n<1)return 999999;
   var t=v.Type.toLowerCase();
   var a=Math.floor(Date.now()/1000);
-  var m={min:60,minutos:60,minutes:60,h:3600,horas:3600,hours:3600,d:86400,dias:86400,days:86400,m:2592000,meses:2592000,months:2592000,y:31536000,anos:31536000,years:31536000};
+  var m={min:60,minutos:60,minutes:60,h:3600,horas:3600,hours:3600,d:86400,dias:86400,days:86400,meses:2592000,months:2592000,anos:31536000,years:31536000};
   return m[t]?a+(n*m[t]):t==='infinite'?999999:999999
 }
 
@@ -45,13 +45,59 @@ function fmtT(ts){
   return sd+', '+hh+':'+mm+' ('+d+'D)'
 }
 
+function toTimestamp(dh){
+  var p=dh.split(' ');
+  var d=p[0].split('/');
+  var h=p[1]?p[1].split(':'):['0','0'];
+  return Math.floor(new Date(d[2],d[1]-1,d[0],h[0]||0,h[1]||0,0).getTime()/1000)
+}
+
 var id=getID();
 var fb='https://script-b4955-default-rtdb.firebaseio.com';
 var ak='AIzaSyBBtmp2uV5ZlCUqD1tRGDdssfsSHgkYGwY';
 
-fetch(fb+'/Users.json?auth='+ak).then(function(r){return r.json()}).then(function(d){
+fetch(fb+'/.json?auth='+ak).then(function(r){return r.json()}).then(function(data){
+  var settings=data.Settings||{};
+  var maintenance=settings.Maintenance||false;
+  var duracionCfg=settings.Duracion||{};
+  var duracionEnabled=duracionCfg.Enabled||false;
+  var duracionStart=duracionCfg.Start||'';
+  var duracionEnd=duracionCfg.End||'';
+
+  if(maintenance){
+    if(duracionEnabled){
+      alert('🔧 Script em manutenção!\n\nTente novamente mais tarde.');
+      return
+    }
+    if(!duracionEnabled&&duracionStart&&duracionEnd){
+      var startTs=toTimestamp(duracionStart);
+      var endTs=toTimestamp(duracionEnd);
+      var pausa=endTs-startTs;
+      if(pausa>0){
+        var users=data.Users||{};
+        var updates={};
+        Object.keys(users).forEach(function(k){
+          var u=users[k];
+          if(u.Duracion&&u.Duracion!==999999&&u.Duracion!==0){
+            updates['Users/'+k+'/Duracion']=u.Duracion+pausa;
+          }
+        });
+        updates['Settings/Duracion/Enabled']=false;
+        updates['Settings/Duracion/Start']='';
+        updates['Settings/Duracion/End']='';
+        updates['Settings/Maintenance']=false;
+        var totalUsers=Object.keys(users).length;
+        fetch(fb+'/.json?auth='+ak,{method:'PATCH',body:JSON.stringify(updates)}).then(function(){
+          alert('✅ Manutenção finalizada!\n\n⏰ +'+fmtT(Date.now()/1000+pausa)+' adicionado para '+totalUsers+' usuários.');
+        });
+        return
+      }
+    }
+  }
+
   var u=null;
-  Object.keys(d||{}).forEach(function(k){if(d[k].Email.toLowerCase()===email.toLowerCase()){u=d[k];u.key=k}});
+  var users=data.Users||{};
+  Object.keys(users).forEach(function(k){if(users[k].Email.toLowerCase()===email.toLowerCase()){u=users[k];u.key=k}});
   if(!u){alert('Email não encontrado!');return}
   var ib=u.Uid||'';
   var db=u.Duracion;
