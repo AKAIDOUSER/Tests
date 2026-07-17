@@ -1,7 +1,7 @@
 void(function(){
 var d=document;
 
-// ==========  ==========
+// ========== STYLES ==========
 if(!d.querySelector('style[data-menu]')){
   var s=d.createElement('style');
   s.setAttribute('data-menu','true');
@@ -69,33 +69,6 @@ function createSlider(label,min,max,value,onChange){
   c.appendChild(h);c.appendChild(s);return c;
 }
 
-function createInput(label,placeholder,value,onChange){
-  var c=d.createElement('div');c.style.cssText='padding:6px 0;';
-  var l=d.createElement('label');l.style.cssText='font-size:11px;color:#666;display:block;margin-bottom:4px;font-family:Inter,sans-serif;';l.textContent=label;
-  var i=d.createElement('input');i.type='text';i.placeholder=placeholder||'';i.value=value||'';
-  i.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;transition:0.2s;box-sizing:border-box;';
-  i.addEventListener('focus',function(){i.style.borderColor='#444'});i.addEventListener('blur',function(){i.style.borderColor='#1a1a1a'});
-  if(onChange)i.addEventListener('input',function(){onChange(this.value)});
-  c.appendChild(l);c.appendChild(i);return c;
-}
-
-function createDropdown(label,options,selected,onChange){
-  var c=d.createElement('div');c.style.cssText='padding:6px 0;';
-  var l=d.createElement('label');l.style.cssText='font-size:11px;color:#666;display:block;margin-bottom:4px;font-family:Inter,sans-serif;';l.textContent=label;
-  var s=d.createElement('select');s.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;cursor:pointer;box-sizing:border-box;';
-  options.forEach(function(o){var opt=d.createElement('option');opt.value=o.value;opt.textContent=o.label;if(o.value===selected)opt.selected=true;s.appendChild(opt)});
-  s.addEventListener('change',function(){if(onChange)onChange(this.value)});
-  c.appendChild(l);c.appendChild(s);return c;
-}
-
-function createButton(text,primary,onClick){
-  var b=d.createElement('button');b.textContent=text;
-  b.style.cssText='width:100%;height:38px;border-radius:10px;font-size:12px;font-weight:500;cursor:pointer;font-family:Inter,sans-serif;transition:0.3s;border:1px solid #2a2a2a;background:transparent;color:#888;margin-top:4px;';
-  b.addEventListener('mouseenter',function(){b.style.borderColor='#444';b.style.color='#bbb'});
-  b.addEventListener('mouseleave',function(){b.style.borderColor='#2a2a2a';b.style.color='#888'});
-  b.addEventListener('click',onClick);return b;
-}
-
 // ========== SETTINGS ==========
 function loadSettings(){try{return JSON.parse(localStorage.getItem('_menu_settings')||'{}')}catch(e){return{}}}
 function saveSettings(s){localStorage.setItem('_menu_settings',JSON.stringify(s))}
@@ -105,10 +78,12 @@ settings.generateEnabled=settings.generateEnabled!==undefined?settings.generateE
 settings.typingSpeed=settings.typingSpeed||50;
 settings.essayTopic=settings.essayTopic||'Free';
 settings.savedAPIs=settings.savedAPIs||[];
+settings.selectedAPI=settings.selectedAPI||'';
+
+var aiProviders={chatgpt:{name:'ChatGPT',models:['gpt-4','gpt-4-turbo','gpt-3.5-turbo']},gemini:{name:'Gemini',models:['gemini-pro','gemini-ultra']},deepseek:{name:'DeepSeek',models:['deepseek-chat','deepseek-coder']},mistral:{name:'Mistral',models:['mistral-large','mistral-medium','mistral-small']}};
 
 // ========== FLOATING BUTTON ==========
 var floatBtn=d.createElement('div');
-floatBtn.setAttribute('data-float-btn','true');
 floatBtn.style.cssText='position:fixed;bottom:24px;right:24px;z-index:999999;width:48px;height:48px;background:#0d0d0d;border:1px solid #1a1a1a;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,0.6);animation:floatIn 0.4s cubic-bezier(0.34,1.56,0.64,1);transition:0.3s;';
 floatBtn.addEventListener('mouseenter',function(){floatBtn.style.borderColor='#444';floatBtn.style.transform='scale(1.05)'});
 floatBtn.addEventListener('mouseleave',function(){floatBtn.style.borderColor='#1a1a1a';floatBtn.style.transform='scale(1)'});
@@ -123,10 +98,8 @@ d.body.appendChild(overlay);
 
 // ========== MENU PANEL ==========
 var menuContainer=d.createElement('div');
-menuContainer.setAttribute('data-menu-panel','true');
 menuContainer.style.cssText='position:fixed;top:50%;left:50%;z-index:999998;transform:translate(-50%,-50%) scale(0);width:320px;max-height:80vh;overflow-y:auto;background:#0d0d0d;border:1px solid #1a1a1a;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.8);font-family:Inter,sans-serif;padding:20px;transition:0.3s cubic-bezier(0.34,1.56,0.64,1);';
 
-// Dragging
 var isDragging=false,offsetX=0,offsetY=0;
 menuContainer.addEventListener('mousedown',function(e){if(e.target===menuContainer||e.target.closest('[data-header]')){isDragging=true;var rect=menuContainer.getBoundingClientRect();offsetX=e.clientX-rect.left;offsetY=e.clientY-rect.top;menuContainer.style.transition='none'}});
 d.addEventListener('mousemove',function(e){if(isDragging){menuContainer.style.left=(e.clientX-offsetX)+'px';menuContainer.style.top=(e.clientY-offsetY)+'px';menuContainer.style.transform='none'}});
@@ -140,19 +113,21 @@ floatBtn.addEventListener('click',function(){menuOpen?closeMenu():openMenu()});
 // ========== HEADER ==========
 var header=d.createElement('div');
 header.setAttribute('data-header','true');
-header.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #1a1a1a;cursor:grab;';
+header.style.cssText='display:flex;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #1a1a1a;cursor:grab;';
 
-var dots=d.createElement('div');dots.style.cssText='display:flex;gap:5px;';
+var dots=d.createElement('div');dots.style.cssText='display:flex;gap:5px;flex-shrink:0;';
 ['#ff5f57','#febc2e','#28c840'].forEach(function(cl){var dot=d.createElement('div');dot.style.cssText='width:10px;height:10px;border-radius:50%;background:'+cl;dots.appendChild(dot)});
 
-var brand=d.createElement('div');brand.style.cssText='text-align:center;';
+var spacer=d.createElement('div');spacer.style.cssText='flex:1;';
+
+var brand=d.createElement('div');brand.style.cssText='text-align:right;flex-shrink:0;';
 var brandText=d.createElement('span');brandText.style.cssText='font-size:14px;font-weight:500;';
 var aiPart=d.createElement('span');aiPart.textContent='Ai';aiPart.style.cssText='color:#888;';
 var codePart=d.createElement('span');codePart.textContent='Code';codePart.style.cssText='color:#fff;';
 brandText.appendChild(aiPart);brandText.appendChild(codePart);
 brand.appendChild(brandText);
 
-header.appendChild(dots);header.appendChild(brand);header.appendChild(d.createElement('div'));
+header.appendChild(dots);header.appendChild(spacer);header.appendChild(brand);
 menuContainer.appendChild(header);
 
 // ========== TABS ==========
@@ -184,64 +159,92 @@ function showTools(){
 }
 
 // ========== API TAB ==========
-var aiProviders={chatgpt:{name:'ChatGPT',models:['gpt-4','gpt-4-turbo','gpt-3.5-turbo']},gemini:{name:'Gemini',models:['gemini-pro','gemini-ultra']},deepseek:{name:'DeepSeek',models:['deepseek-chat','deepseek-coder']},mistral:{name:'Mistral',models:['mistral-large','mistral-medium','mistral-small']}};
-
 function showAPI(){
   contentArea.innerHTML='';
   
-  var nameInput=createInput('API Name','e.g. My ChatGPT','',function(v){});
+  // Dropdown de APIs salvas
+  if(settings.savedAPIs.length>0){
+    var savedLabel=d.createElement('label');savedLabel.style.cssText='font-size:11px;color:#666;display:block;margin-bottom:4px;font-family:Inter,sans-serif;';savedLabel.textContent='Saved APIs';
+    contentArea.appendChild(savedLabel);
+    
+    var savedSelect=d.createElement('select');
+    savedSelect.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;cursor:pointer;box-sizing:border-box;margin-bottom:8px;';
+    var emptyOpt=d.createElement('option');emptyOpt.value='';emptyOpt.textContent='Select saved API...';savedSelect.appendChild(emptyOpt);
+    settings.savedAPIs.forEach(function(api,i){
+      var o=d.createElement('option');o.value=i;o.textContent=api.name+' - '+aiProviders[api.provider].name+' - '+api.model;
+      if(String(i)===String(settings.selectedAPI))o.selected=true;
+      savedSelect.appendChild(o);
+    });
+    savedSelect.addEventListener('change',function(){settings.selectedAPI=this.value;saveSettings(settings)});
+    contentArea.appendChild(savedSelect);
+    
+    if(settings.selectedAPI!==''&&settings.savedAPIs[settings.selectedAPI]){
+      var delBtn=d.createElement('button');delBtn.textContent='Remove selected';
+      delBtn.style.cssText='width:100%;height:32px;border-radius:8px;font-size:11px;cursor:pointer;font-family:Inter,sans-serif;transition:0.2s;border:1px solid #2a0a0a;background:transparent;color:#ff4757;margin-bottom:12px;';
+      delBtn.addEventListener('mouseenter',function(){delBtn.style.borderColor='#ff4757'});
+      delBtn.addEventListener('mouseleave',function(){delBtn.style.borderColor='#2a0a0a'});
+      delBtn.addEventListener('click',function(){settings.savedAPIs.splice(settings.selectedAPI,1);settings.selectedAPI='';saveSettings(settings);showAPI();notify('API removed','info',2000)});
+      contentArea.appendChild(delBtn);
+    }
+    
+    var divider=d.createElement('div');divider.style.cssText='border-top:1px solid #1a1a1a;margin:8px 0;';contentArea.appendChild(divider);
+  }
+  
+  // Adicionar nova API
+  var addLabel=d.createElement('label');addLabel.style.cssText='font-size:11px;color:#666;display:block;margin-bottom:4px;font-family:Inter,sans-serif;';addLabel.textContent='Add new API';
+  contentArea.appendChild(addLabel);
+  
+  var nameInput=d.createElement('input');nameInput.type='text';nameInput.placeholder='API Name (e.g. My ChatGPT)';
+  nameInput.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;transition:0.2s;box-sizing:border-box;margin-bottom:6px;';
+  nameInput.addEventListener('focus',function(){nameInput.style.borderColor='#444'});
+  nameInput.addEventListener('blur',function(){nameInput.style.borderColor='#1a1a1a'});
   contentArea.appendChild(nameInput);
   
-  var apiRow=d.createElement('div');apiRow.style.cssText='display:flex;gap:6px;align-items:flex-end;';
+  var apiRow=d.createElement('div');apiRow.style.cssText='display:flex;gap:6px;align-items:flex-end;margin-bottom:6px;';
   var apiInput=d.createElement('input');apiInput.type='password';apiInput.placeholder='API Key';
   apiInput.style.cssText='flex:1;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;transition:0.2s;box-sizing:border-box;';
   apiInput.addEventListener('focus',function(){apiInput.style.borderColor='#444'});
   apiInput.addEventListener('blur',function(){apiInput.style.borderColor='#1a1a1a'});
   
   var pasteBtn=d.createElement('button');
-  pasteBtn.style.cssText='width:36px;height:36px;border-radius:8px;cursor:pointer;border:1px solid #2a2a2a;background:transparent;display:flex;align-items:center;justify-content:center;transition:0.2s;';
+  pasteBtn.style.cssText='width:36px;height:36px;border-radius:8px;cursor:pointer;border:1px solid #2a2a2a;background:transparent;display:flex;align-items:center;justify-content:center;transition:0.2s;flex-shrink:0;';
   pasteBtn.addEventListener('mouseenter',function(){pasteBtn.style.borderColor='#444'});
   pasteBtn.addEventListener('mouseleave',function(){pasteBtn.style.borderColor='#2a2a2a'});
   pasteBtn.addEventListener('click',function(){navigator.clipboard.readText().then(function(t){apiInput.value=t}).catch(function(){notify('Clipboard denied','error',2000)})});
   var pasteIcon=d.createElement('i');pasteIcon.className='bx bx-paste';pasteIcon.style.cssText='font-size:16px;color:#888;';
   pasteBtn.appendChild(pasteIcon);
-  
   apiRow.appendChild(apiInput);apiRow.appendChild(pasteBtn);
-  var apiLabel=d.createElement('label');apiLabel.style.cssText='font-size:11px;color:#666;display:block;margin-bottom:4px;font-family:Inter,sans-serif;';apiLabel.textContent='API Key';
-  contentArea.appendChild(apiLabel);
   contentArea.appendChild(apiRow);
   
+  // Provider dropdown
   var providerSelect=d.createElement('select');
-  providerSelect.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;cursor:pointer;box-sizing:border-box;';
+  providerSelect.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;cursor:pointer;box-sizing:border-box;margin-bottom:6px;';
   Object.keys(aiProviders).forEach(function(k){var o=d.createElement('option');o.value=k;o.textContent=aiProviders[k].name;providerSelect.appendChild(o)});
   
   var modelSelect=d.createElement('select');
-  modelSelect.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;cursor:pointer;box-sizing:border-box;margin-top:4px;';
-  
+  modelSelect.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;cursor:pointer;box-sizing:border-box;margin-bottom:8px;';
   function updateModels(){modelSelect.innerHTML='';var p=aiProviders[providerSelect.value];if(p){p.models.forEach(function(m){var o=d.createElement('option');o.value=m;o.textContent=m;modelSelect.appendChild(o)})}}
   providerSelect.addEventListener('change',updateModels);updateModels();
   
-  contentArea.appendChild(createLabel('AI Provider'));contentArea.appendChild(providerSelect);
-  contentArea.appendChild(createLabel('AI Model'));contentArea.appendChild(modelSelect);
+  var provLabel=d.createElement('label');provLabel.style.cssText='font-size:11px;color:#666;display:block;margin-bottom:4px;font-family:Inter,sans-serif;';provLabel.textContent='AI Provider';
+  contentArea.appendChild(provLabel);
+  contentArea.appendChild(providerSelect);
   
-  contentArea.appendChild(createButton('Add API',false,function(){
-    var name=nameInput.querySelector('input').value;var key=apiInput.value;var prov=providerSelect.value;var model=modelSelect.value;
+  var modelLabel=d.createElement('label');modelLabel.style.cssText='font-size:11px;color:#666;display:block;margin-bottom:4px;font-family:Inter,sans-serif;';modelLabel.textContent='AI Model';
+  contentArea.appendChild(modelLabel);
+  contentArea.appendChild(modelSelect);
+  
+  var addBtn=d.createElement('button');addBtn.textContent='Add API';
+  addBtn.style.cssText='width:100%;height:38px;border-radius:10px;font-size:12px;font-weight:500;cursor:pointer;font-family:Inter,sans-serif;transition:0.3s;border:1px solid #2a2a2a;background:transparent;color:#888;';
+  addBtn.addEventListener('mouseenter',function(){addBtn.style.borderColor='#444';addBtn.style.color='#bbb'});
+  addBtn.addEventListener('mouseleave',function(){addBtn.style.borderColor='#2a2a2a';addBtn.style.color='#888'});
+  addBtn.addEventListener('click',function(){
+    var name=nameInput.value;var key=apiInput.value;var prov=providerSelect.value;var model=modelSelect.value;
     if(!name||!key){notify('Fill all fields','error',2000);return}
     settings.savedAPIs.push({name:name,key:key,provider:prov,model:model});saveSettings(settings);
-    nameInput.querySelector('input').value='';apiInput.value='';notify('API saved: '+name+' - '+aiProviders[prov].name+' - '+model,'success',4000);showAPI()
-  }));
-  
-  if(settings.savedAPIs.length>0){
-    var savedLabel=d.createElement('label');savedLabel.style.cssText='font-size:11px;color:#666;display:block;margin-top:12px;margin-bottom:4px;font-family:Inter,sans-serif;';savedLabel.textContent='Saved APIs';
-    contentArea.appendChild(savedLabel);
-    settings.savedAPIs.forEach(function(api,i){
-      var item=d.createElement('div');item.style.cssText='padding:6px 0;font-size:11px;color:#888;font-family:Inter,sans-serif;display:flex;justify-content:space-between;align-items:center;';
-      item.textContent=api.name+' - '+aiProviders[api.provider].name+' - '+api.model;
-      var del=d.createElement('i');del.className='bx bx-trash';del.style.cssText='color:#555;cursor:pointer;font-size:14px;';
-      del.addEventListener('click',function(){settings.savedAPIs.splice(i,1);saveSettings(settings);showAPI()});
-      item.appendChild(del);contentArea.appendChild(item)
-    })
-  }
+    nameInput.value='';apiInput.value='';notify('API saved: '+name,'success',4000);showAPI()
+  });
+  contentArea.appendChild(addBtn);
 }
 
 var toolsTab=createTab('Tools',true,function(){toolsTab.style.color='#fff';toolsTab.style.borderColor='#2a2a2a';apiTab.style.color='#666';apiTab.style.borderColor='transparent';showTools()});
