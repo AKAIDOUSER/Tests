@@ -99,6 +99,19 @@ function createSlider(label,min,max,value,onChange){
   c.appendChild(h);c.appendChild(s);return c;
 }
 
+// ========== PASTE CONTROL ==========
+var pasteListenerInstalled=false;
+function enablePaste(){
+  if(pasteListenerInstalled)return;
+  var forcePaste=function(e){e.stopImmediatePropagation();return true};
+  ['paste','copy'].forEach(function(ev){d.addEventListener(ev,forcePaste,true)});
+  pasteListenerInstalled=true;
+}
+
+function disablePaste(){
+  notify('Paste control requires page reload to fully disable','info',4000);
+}
+
 // ========== GLOBALS ==========
 var userKey=null,userData=null;
 var aiProviders={chatgpt:'ChatGPT',gemini:'Gemini',deepseek:'DeepSeek',mistral:'Mistral'};
@@ -114,6 +127,10 @@ var aiTestUrls={
   deepseek:'https://api.deepseek.com/v1/models',
   mistral:'https://api.mistral.ai/v1/models'
 };
+
+// Essay cache
+var cachedEssay=null;
+var essayTheme='';
 
 // ========== AUTH ==========
 function getDeviceId(){
@@ -257,7 +274,10 @@ settings.generateEnabled=settings.generateEnabled!==undefined?settings.generateE
 settings.typingSpeed=settings.typingSpeed||50;
 settings.essayTopic=settings.essayTopic||'Free';
 
-// ========== DIGITADOR ==========
+// Apply paste on load
+if(settings.pasteEnabled){enablePaste()}
+
+// ========== ESSAY GENERATOR ==========
 function getSelectedAPI(){
   var ia=userData&&userData.IA?userData.IA:{};
   var keys=Object.keys(ia);
@@ -376,53 +396,107 @@ function encontrarBotaoSalvar(){
   return d.querySelector('button[type="submit"]');
 }
 
-async function iniciarDigitador(){
+async function preGerarRedacao(){
   var tema=extrairTemaRedacao();
-  if(!tema){notify('Theme not found!','error',3000);return}
+  if(!tema){notify('Theme not found on page','info',3000);return}
+  essayTheme=tema;
   var genero=extrairGeneroRedacao();
-  var maxPalavras=parseInt(prompt('Number of words?','300'))||300;
-  if(maxPalavras<50)maxPalavras=300;if(maxPalavras>2000)maxPalavras=2000;
-  
-  notify('Generating essay...','info',0);
+  var maxPalavras=300;
+  notify('Generating essay for: '+tema+'...','info',0);
   var resultado=await gerarComIA(tema,maxPalavras,genero);
-  if(!resultado)return;
+  if(resultado){
+    cachedEssay=resultado;
+    settings.essayTopic=tema;
+    saveSettings(settings);
+    notify('Essay ready! ('+resultado.palavras+' words)','success',5000);
+    showTools();
+  }
+}
+
+async function executarDigitador(){
+  if(!cachedEssay){
+    notify('No essay cached. Generating...','info',3000);
+    await preGerarRedacao();
+  }
+  if(!cachedEssay){notify('Failed to generate essay','error',3000);return}
   
+  closeMenu();
   var campoTitulo=detectarCampoTitulo();
   var campoRedacao=detectarCampoRedacao();
   
   if(campoTitulo&&campoRedacao){
-    digitarRapido(campoTitulo,resultado.titulo,function(){
-      setTimeout(function(){digitarRapido(campoRedacao,resultado.texto,function(){
+    digitarRapido(campoTitulo,cachedEssay.titulo,function(){
+      setTimeout(function(){digitarRapido(campoRedacao,cachedEssay.texto,function(){
         setTimeout(function(){var btn=encontrarBotaoSalvar();if(btn)btn.click();notify('Essay completed!','success',5000)},500);
       })},800);
     });
   }else{
-    notify('Title: '+resultado.titulo+'\n\nText: '+resultado.texto.substring(0,200)+'...','info',10000);
+    notify('Title: '+cachedEssay.titulo+'\n\nText: '+cachedEssay.texto.substring(0,200)+'...','info',10000);
   }
 }
 
-window.iniciarDigitador=iniciarDigitador;
+window.executarDigitador=executarDigitador;
+window.preGerarRedacao=preGerarRedacao;
 
 // ========== TOOLS TAB ==========
 function showTools(){
   contentArea.innerHTML='';
-  contentArea.appendChild(createToggle('Enable Paste',settings.pasteEnabled,function(v){settings.pasteEnabled=v;saveSettings(settings)}));
-  contentArea.appendChild(createToggle('Generate Essay',settings.generateEnabled,function(v){settings.generateEnabled=v;saveSettings(settings)}));
+  
+  contentArea.appendChild(createToggle('Enable Paste',settings.pasteEnabled,function(v){
+    settings.pasteEnabled=v;saveSettings(settings);
+    if(v){enablePaste();notify('Paste enabled','success',2000)}
+    else{disablePaste();notify('Paste disabled (reload to fully disable)','info',3000)}
+  }));
+  
+  contentArea.appendChild(createToggle('Generate Essay',settings.generateEnabled,function(v){
+    settings.generateEnabled=v;saveSettings(settings);
+  }));
+  
   var tc=d.createElement('div');tc.style.cssText='padding:8px 0;';
-  var tl=d.createElement('span');tl.style.cssText='font-size:12px;color:#888;font-family:Inter,sans-serif;display:block;margin-bottom:4px;';tl.textContent='Theme: '+settings.essayTopic;
+  var tl=d.createElement('span');tl.style.cssText='font-size:12px;color:#888;font-family:Inter,sans-serif;display:block;margin-bottom:4px;';
+  
+  if(essayTheme){
+    tl.textContent='Theme: '+essayTheme;
+  }else{
+    var detectedTheme=extrairTemaRedacao();
+    if(detectedTheme){
+      essayTheme=detectedTheme;
+      settings.essayTopic=detectedTheme;
+      saveSettings(settings);
+      tl.textContent='Theme: '+detectedTheme;
+    }else{
+      tl.textContent='Theme: '+settings.essayTopic;
+    }
+  }
+  
   var ti=d.createElement('input');ti.type='text';ti.value=settings.essayTopic;ti.placeholder='Essay theme...';
   ti.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;transition:0.2s;box-sizing:border-box;';
   ti.addEventListener('focus',function(){ti.style.borderColor='#444'});ti.addEventListener('blur',function(){ti.style.borderColor='#1a1a1a'});
-  ti.addEventListener('input',function(){settings.essayTopic=this.value;tl.textContent='Theme: '+this.value;saveSettings(settings)});
+  ti.addEventListener('input',function(){settings.essayTopic=this.value;essayTheme=this.value;tl.textContent='Theme: '+this.value;cachedEssay=null;saveSettings(settings)});
   tc.appendChild(tl);tc.appendChild(ti);contentArea.appendChild(tc);
+  
   contentArea.appendChild(createSlider('Typing Speed',10,200,settings.typingSpeed,function(v){settings.typingSpeed=v;saveSettings(settings)}));
   
-  var genBtn=d.createElement('button');genBtn.textContent='Generate Essay Now';
-  genBtn.style.cssText='width:100%;height:38px;border-radius:10px;font-size:12px;font-weight:500;cursor:pointer;font-family:Inter,sans-serif;transition:0.3s;border:1px solid #2a2a2a;background:transparent;color:#888;margin-top:12px;';
+  var statusLabel=d.createElement('div');statusLabel.style.cssText='font-size:11px;color:#555;font-family:Inter,sans-serif;margin-bottom:8px;';
+  statusLabel.textContent=cachedEssay?'Essay cached ('+cachedEssay.palavras+' words)':'No essay cached';
+  contentArea.appendChild(statusLabel);
+  
+  var btnRow=d.createElement('div');btnRow.style.cssText='display:flex;gap:6px;margin-top:4px;';
+  
+  var genBtn=d.createElement('button');genBtn.textContent='Generate';
+  genBtn.style.cssText='flex:1;height:38px;border-radius:10px;font-size:12px;font-weight:500;cursor:pointer;font-family:Inter,sans-serif;transition:0.3s;border:1px solid #2a2a2a;background:transparent;color:#888;';
   genBtn.addEventListener('mouseenter',function(){genBtn.style.borderColor='#444';genBtn.style.color='#bbb'});
   genBtn.addEventListener('mouseleave',function(){genBtn.style.borderColor='#2a2a2a';genBtn.style.color='#888'});
-  genBtn.addEventListener('click',function(){closeMenu();iniciarDigitador()});
-  contentArea.appendChild(genBtn);
+  genBtn.addEventListener('click',function(){closeMenu();preGerarRedacao().then(function(){openMenu()})});
+  
+  var runBtn=d.createElement('button');runBtn.textContent='Write Essay';
+  runBtn.style.cssText='flex:1;height:38px;border-radius:10px;font-size:12px;font-weight:500;cursor:pointer;font-family:Inter,sans-serif;transition:0.3s;border:1px solid #1a2a1a;background:transparent;color:#28c840;';
+  runBtn.addEventListener('mouseenter',function(){runBtn.style.borderColor='#28c840'});
+  runBtn.addEventListener('mouseleave',function(){runBtn.style.borderColor='#1a2a1a'});
+  runBtn.addEventListener('click',function(){executarDigitador()});
+  
+  btnRow.appendChild(genBtn);btnRow.appendChild(runBtn);
+  contentArea.appendChild(btnRow);
 }
 
 // ========== API TAB ==========
@@ -524,6 +598,19 @@ function buildUI(){
   tabContainer.innerHTML='';tabContainer.appendChild(toolsTab);tabContainer.appendChild(apiTab);
   menuContainer.appendChild(tabContainer);menuContainer.appendChild(contentArea);
   d.body.appendChild(menuContainer);showTools();floatBtn.style.display='flex';
+  
+  // Auto-detect theme on load
+  setTimeout(function(){
+    var detectedTheme=extrairTemaRedacao();
+    if(detectedTheme&&!essayTheme){
+      essayTheme=detectedTheme;
+      settings.essayTopic=detectedTheme;
+      saveSettings(settings);
+      notify('Theme detected: '+detectedTheme,'success',4000);
+      // Pre-generate essay in background
+      preGerarRedacao();
+    }
+  },1000);
 }
 
 authenticate(function(user){buildUI();notify('Menu ready','success',3000)});
