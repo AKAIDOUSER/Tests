@@ -180,7 +180,6 @@ var url=window.location.href;
 var match=url.match(/\/student-write-essay\/(\d+)\/(\d+)/);
 
 function extractFromPage(cb){
-// Pega todas as divs com a classe css-skkg69
 var boxes=d.querySelectorAll('.MuiBox-root.css-skkg69');
 var encontrados=0;
 
@@ -190,12 +189,10 @@ for(var j=0;j<ps.length;j++){
 var txt=ps[j].textContent.trim();
 var txtUpper=txt.toUpperCase();
 
-// Primeira div: genero (Dissertacao)
 if(txtUpper.includes('DISSERTAÇÃO') || txtUpper.includes('DISSERTACAO')){
 genero=txt;
 encontrados++;
 }
-// Segunda div: tema
 else if(txtUpper.includes('TEMA:')){
 tema=txt.replace(/TEMA:\s*/i,'').trim();
 if(tema&&tema.length>=3){
@@ -203,7 +200,6 @@ tema=limparTema(tema);
 encontrados++;
 }
 }
-// Terceira div: palavras min e max
 else if(txtUpper.includes('DE ') && txtUpper.includes('ATÉ') && txtUpper.includes('PALAVRAS')){
 var nums=txt.match(/(\d+)\s*AT[ÉE]\s*(\d+)/i);
 if(nums){
@@ -215,13 +211,11 @@ encontrados++;
 }
 }
 
-// Se encontrou pelo menos tema e palavras, considera sucesso
 if(tema && minP>0 && maxP>0){
 propostaData={proposta:{descTema:tema,descGenero:genero,minPalvra:minP,maxPalavra:maxP}};
 essayTheme=tema;
 if(cb)cb(propostaData);
 }else{
-// Fallback: tenta encontrar qualquer tema
 for(var i=0;i<boxes.length;i++){
 var ps=boxes[i].querySelectorAll('p.MuiTypography-root.MuiTypography-body2');
 for(var j=0;j<ps.length;j++){
@@ -277,9 +271,9 @@ else{modePrompt='Write in a NORMAL style: balanced between formal and natural, c
 var prompt='Voce e um estudante brasileiro. '+modePrompt+'\n\nEscreva uma redacao em PORTUGUES sobre: '+tema+'\nGenero: '+genero+'\nPalavras: EXATAMENTE entre '+minPalavras+' e '+maxPalavras+'. NAO ultrapasse '+maxPalavras+' palavras.\n\nREGRAS IMPORTANTES:\n1. APENAS portugues\n2. Sem asteriscos ou aspas\n3. NAO ultrapasse o limite de palavras\n4. NAO repita "TITULO:" dentro do texto\n5. Formato EXATO:\nTITULO: [titulo criativo]\nTEXTO: [redacao completa]';
 var provKey=api.Provider.toLowerCase();var endpoint=aiEndpoints[provKey]||aiEndpoints.mistral;var headers={'Content-Type':'application/json'};var body={};
 if(provKey==='gemini'){endpoint='https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key='+api.API;body={contents:[{parts:[{text:prompt}]}]}}
-else if(provKey==='chatgpt'){headers['Authorization']='Bearer '+api.API;body={model:'gpt-3.5-turbo',messages:[{role:'system',content:'Responda apenas em portugues. Respeite o limite de palavras. NAO repita TITULO: no texto.'},{role:'user',content:prompt}],temperature:0.7,max_tokens:4000}}
-else if(provKey==='deepseek'){headers['Authorization']='Bearer '+api.API;body={model:'deepseek-chat',messages:[{role:'system',content:'Responda apenas em portugues. Respeite o limite de palavras. NAO repita TITULO: no texto.'},{role:'user',content:prompt}],temperature:0.7,max_tokens:4000}}
-else{headers['Authorization']='Bearer '+api.API;body={model:'mistral-large-latest',messages:[{role:'system',content:'Responda apenas em portugues. Respeite o limite de palavras. NAO repita TITULO: no texto.'},{role:'user',content:prompt}],temperature:0.7,max_tokens:4000}}
+else if(provKey==='chatgpt'){headers['Authorization']='Bearer '+api.API;body={model:'gpt-3.5-turbo',messages:[{role:'system',content:'Responda apenas em portugues. Respeite o limite de palavras. NAO ultrapasse '+maxPalavras+' palavras. NAO repita TITULO: no texto.'},{role:'user',content:prompt}],temperature:0.7,max_tokens:2000}}
+else if(provKey==='deepseek'){headers['Authorization']='Bearer '+api.API;body={model:'deepseek-chat',messages:[{role:'system',content:'Responda apenas em portugues. Respeite o limite de palavras. NAO ultrapasse '+maxPalavras+' palavras. NAO repita TITULO: no texto.'},{role:'user',content:prompt}],temperature:0.7,max_tokens:2000}}
+else{headers['Authorization']='Bearer '+api.API;body={model:'mistral-large-latest',messages:[{role:'system',content:'Responda apenas em portugues. Respeite o limite de palavras. NAO ultrapasse '+maxPalavras+' palavras. NAO repita TITULO: no texto.'},{role:'user',content:prompt}],temperature:0.7,max_tokens:2000}}
 try{
 var r=await fetch(endpoint,{method:'POST',headers:headers,body:JSON.stringify(body)});if(!r.ok)throw new Error('Status '+r.status);var data=await r.json();
 var resposta='';if(provKey==='gemini'){resposta=data.candidates[0].content.parts[0].text}else{resposta=data.choices[0].message.content}
@@ -290,47 +284,73 @@ var txm=resposta.match(/TEXTO:\s*([\s\S]+)/i);
 if(tm)titulo=tm[1].trim();
 if(txm)texto=txm[1].trim();
 
-// FIX MELHORADO: Fallback quando os formatos nao sao encontrados
 if(!titulo || !texto || texto.length<10){
 var linhas=resposta.split('\n').filter(function(l){return l.trim().length>0});
 if(linhas.length>0){
-// Tenta encontrar titulo (primeira linha curta ou que nao parece ser texto)
 if(linhas.length>=2 && linhas[0].length<80){
 titulo=linhas[0].trim();
 texto=linhas.slice(1).join('\n').trim();
 }else{
-// Se so tem uma linha ou a primeira linha e longa, usa como texto
 titulo='Redacao sobre '+tema;
 texto=linhas.join('\n').trim();
 }
 }
-// Se ainda nao tem texto, usa o que veio
 if(!texto)texto=titulo;
 if(!titulo)titulo='Redacao sobre '+tema;
 }
 
-// Remove prefixos residuais
 titulo=titulo.replace(/^TITULO:\s*/i,'').replace(/^TÍTULO:\s*/i,'').trim();
 texto=texto.replace(/^TEXTO:\s*/i,'').replace(/^TITULO:\s*/i,'').replace(/^TÍTULO:\s*/i,'').trim();
 
-// Conta palavras corretamente
-var palavras=texto.split(/\s+/).filter(function(p){return p.length>0}).length;
+// CORRECAO: Limita o texto ao maximo de palavras
+var palavrasArray=texto.split(/\s+/).filter(function(p){return p.length>0});
+if(palavrasArray.length>maxPalavras){
+palavrasArray=palavrasArray.slice(0,maxPalavras);
+texto=palavrasArray.join(' ');
+}
+var palavras=palavrasArray.length;
 
 return{titulo:titulo,texto:texto,palavras:palavras};
 }catch(e){notify('Generation error: '+e.message,'error',5000);return null}
 }
 function pararDigitacao(){typingStopped=true;if(currentTypingTimeout){clearTimeout(currentTypingTimeout);currentTypingTimeout=null}}
 function digitarRapido(el,texto,totalPalavras,callback){
-typingStopped=false;var i=0;var palavras=texto.split(/\s+/).filter(function(p){return p.length>0}).length;
+typingStopped=false;
+var i=0;
+var palavras=texto.split(/\s+/).filter(function(p){return p.length>0}).length;
 var isInput=(el.tagName==='INPUT'||el.tagName==='TEXTAREA');
-try{if(isInput){el.readOnly=false;el.focus();if(el.value)el.setSelectionRange(el.value.length,el.value.length)}}catch(e){}
+try{if(isInput){el.readOnly=false;el.focus();el.click();if(el.value)el.setSelectionRange(el.value.length,el.value.length)}}catch(e){}
 var progressBar=d.createElement('div');progressBar.style.cssText='position:fixed;bottom:40px;left:50%;transform:translateX(-50%);z-index:999999;background:#0d0d0d;border:1px solid #1a1a1a;border-radius:14px;padding:14px 20px;box-shadow:0 8px 32px rgba(0,0,0,0.6);font-family:Inter,sans-serif;display:flex;align-items:center;gap:12px;min-width:200px;';
 var progressIcon=d.createElement('i');progressIcon.className='bx bx-edit';progressIcon.style.cssText='font-size:20px;color:#28c840;animation:pulse 1.5s ease-in-out infinite;';
 var progressText=d.createElement('div');progressText.style.cssText='font-size:12px;color:#888;';progressText.textContent='Typing... 0/'+palavras+' words';
 progressBar.appendChild(progressIcon);progressBar.appendChild(progressText);d.body.appendChild(progressBar);
 function digitar(){
 if(typingStopped){progressBar.remove();return}
-if(i<texto.length){var ch=texto[i++];try{if(isInput){var pos=el.selectionStart||el.value.length;el.setRangeText(ch,pos,pos,'end')}else{el.textContent+=ch}el.dispatchEvent(new Event('input',{bubbles:true}));var digitadas=el.value?el.value.split(/\s+/).filter(function(p){return p.length>0}).length:0;progressText.textContent='Typing... '+digitadas+'/'+palavras+' words'}catch(e){}currentTypingTimeout=setTimeout(digitar,settings.typingSpeed||50)}else{progressIcon.className='bx bx-check-circle';progressIcon.style.color='#28c840';progressIcon.style.animation='none';progressText.textContent='Done! '+palavras+' words';setTimeout(function(){progressBar.remove()},1500);if(callback)callback()}
+if(i<texto.length){
+var ch=texto[i++];
+try{
+if(isInput){
+var pos=el.selectionStart || 0;
+var val=el.value;
+el.value=val.substring(0,pos)+ch+val.substring(pos);
+el.selectionStart=el.selectionEnd=pos+1;
+}else{
+el.textContent+=ch;
+}
+el.dispatchEvent(new Event('input',{bubbles:true}));
+el.dispatchEvent(new Event('change',{bubbles:true}));
+var digitadas=el.value?el.value.split(/\s+/).filter(function(p){return p.length>0}).length:0;
+progressText.textContent='Typing... '+digitadas+'/'+palavras+' words';
+}catch(e){}
+currentTypingTimeout=setTimeout(digitar,settings.typingSpeed||50);
+}else{
+progressIcon.className='bx bx-check-circle';
+progressIcon.style.color='#28c840';
+progressIcon.style.animation='none';
+progressText.textContent='Done! '+palavras+' words';
+setTimeout(function(){progressBar.remove()},1500);
+if(callback)callback();
+}
 }
 digitar();
 }
@@ -370,7 +390,9 @@ else{disablePaste();notify('Paste disabled','info',2000)}
 contentArea.appendChild(createToggle('Generate Essay',currentGenerateEnabled,function(v){
 currentGenerateEnabled=v;
 saveToggleStates();
-if(v&&cachedEssay){executarDigitador()}
+if(v){
+if(cachedEssay){executarDigitador()}else{preGerarRedacao().then(function(){if(cachedEssay)executarDigitador()})}
+}
 if(!v){pararDigitacao();notify('Typing stopped','info',2000)}
 }));
 var modeRow=d.createElement('div');modeRow.style.cssText='display:flex;gap:6px;padding:6px 0;';
