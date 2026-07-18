@@ -190,20 +190,32 @@ var palavrasArray=texto.split(/\s+/).filter(function(p){return p.length>0});if(p
 return{titulo:titulo,texto:texto,palavras:palavras};
 }catch(e){notify('Generation error: '+e.message,'error',5000);return null}
 }
-function pararDigitacao(){typingStopped=true;if(currentTypingTimeout){clearTimeout(currentTypingTimeout);currentTypingTimeout=null}}
+var progressBar=null;
+
+function pararDigitacao(){
+typingStopped=true;
+typingPaused=false;
+if(currentTypingTimeout){clearTimeout(currentTypingTimeout);currentTypingTimeout=null}
+if(progressBar){progressBar.remove();progressBar=null}
+}
+
 function digitarRapido(el,texto,totalPalavras,callback){
-typingStopped=false;typingPaused=false;var i=typingSavedIndex||0;var palavras=texto.split(/\s+/).filter(function(p){return p.length>0}).length;
+if(progressBar){progressBar.remove();progressBar=null}
+typingStopped=false;typingPaused=false;
+var i=typingSavedIndex||0;
+var palavras=texto.split(/\s+/).filter(function(p){return p.length>0}).length;
 typingSavedElement=el;typingSavedText=texto;typingSavedCallback=callback;
 var isInput=(el.tagName==='INPUT'||el.tagName==='TEXTAREA');
 try{if(isInput&&i===0){el.readOnly=false;el.focus();if(el.value)el.setSelectionRange(el.value.length,el.value.length)}}catch(e){}
 if(i===0){showPauseBtn();pauseFloatIcon.className='bx bx-pause';pauseFloatIcon.style.color='#ff4757'}
-var progressBar=d.createElement('div');progressBar.style.cssText='position:fixed;bottom:40px;left:50%;transform:translateX(-50%);z-index:999999;background:#0d0d0d;border:1px solid #1a1a1a;border-radius:14px;padding:14px 20px;box-shadow:0 8px 32px rgba(0,0,0,0.6);font-family:Inter,sans-serif;display:flex;align-items:center;gap:12px;min-width:200px;';
-var progressIcon=d.createElement('i');progressIcon.className='bx bx-edit';progressIcon.style.cssText='font-size:20px;color:#28c840;animation:pulse 1.5s ease-in-out infinite;';
-var progressText=d.createElement('div');progressText.style.cssText='font-size:12px;color:#888;';progressText.textContent='Typing... 0/'+palavras+' words';
+progressBar=d.createElement('div');progressBar.style.cssText='position:fixed;bottom:40px;left:50%;transform:translateX(-50%);z-index:999999;background:#0d0d0d;border:1px solid #1a1a1a;border-radius:14px;padding:14px 20px;box-shadow:0 8px 32px rgba(0,0,0,0.6);font-family:Inter,sans-serif;display:flex;align-items:center;gap:12px;min-width:200px;';
+var progressIcon=d.createElement('span');progressIcon.className='bx bx-edit';progressIcon.style.cssText='font-size:20px;color:#28c840;animation:pulse 1.5s ease-in-out infinite;line-height:1;';
+var progressText=d.createElement('div');progressText.style.cssText='font-size:12px;color:#888;';progressText.textContent='Typing... '+i+'/'+palavras+' words';
 progressBar.appendChild(progressIcon);progressBar.appendChild(progressText);d.body.appendChild(progressBar);
 function digitar(){
-if(typingStopped||typingPaused){if(typingPaused){typingSavedIndex=i;progressBar.remove()}return}
-if(i<texto.length){var ch=texto[i++];try{if(isInput){var pos=el.selectionStart||el.value.length;el.setRangeText(ch,pos,pos,'end')}else{el.textContent+=ch}el.dispatchEvent(new Event('input',{bubbles:true}));var digitadas=el.value?el.value.split(/\s+/).filter(function(p){return p.length>0}).length:0;progressText.textContent='Typing... '+digitadas+'/'+palavras+' words'}catch(e){}currentTypingTimeout=setTimeout(digitar,settings.typingSpeed||50)}else{typingSavedIndex=0;hidePauseBtn();progressIcon.className='bx bx-check-circle';progressIcon.style.color='#28c840';progressIcon.style.animation='none';progressText.textContent='Done! '+palavras+' words';setTimeout(function(){progressBar.remove()},1500);if(callback)callback()}
+if(typingStopped&&!typingPaused){typingSavedIndex=0;progressBar.remove();progressBar=null;return}
+if(typingPaused){typingSavedIndex=i;return}
+if(i<texto.length){var ch=texto[i];i++;try{if(isInput){var pos=el.selectionStart||el.value.length;el.setRangeText(ch,pos,pos,'end')}else{el.textContent+=ch}el.dispatchEvent(new Event('input',{bubbles:true}));var digitadas=el.value?el.value.split(/\s+/).filter(function(p){return p.length>0}).length:i;progressText.textContent='Typing... '+i+'/'+texto.length+' chars'}catch(e){}currentTypingTimeout=setTimeout(digitar,settings.typingSpeed||50)}else{typingSavedIndex=0;hidePauseBtn();progressIcon.className='bx bx-check-circle';progressIcon.style.color='#28c840';progressIcon.style.animation='none';progressText.textContent='Done! '+palavras+' words';setTimeout(function(){if(progressBar){progressBar.remove();progressBar=null}},1500);if(callback)callback()}
 }
 digitar();
 }
