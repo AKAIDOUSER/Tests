@@ -260,7 +260,7 @@ function buildUI(){
 toolsTab=createTab('Tools',true,function(){currentTab='tools';toolsTab.style.color='#fff';toolsTab.style.borderColor='#2a2a2a';apiTab.style.color='#666';apiTab.style.borderColor='transparent';showTools()});
 apiTab=createTab('API',false,function(){currentTab='api';apiTab.style.color='#fff';apiTab.style.borderColor='#2a2a2a';toolsTab.style.color='#666';toolsTab.style.borderColor='transparent';showAPI()});
 tabContainer.innerHTML='';tabContainer.appendChild(toolsTab);tabContainer.appendChild(apiTab);menuContainer.appendChild(tabContainer);menuContainer.appendChild(contentArea);d.body.appendChild(menuContainer);showTools();floatContainer.style.display='flex';
-getPropostaData(function(data){if(data){showTools();notify('Theme detected: '+essayTheme,'success',3000);preGerarRedacao()}else{notify('Theme not detected','info',3000);showTools()}});
+getPropostaData(function(data){if(data){showTools();notify('Theme detected','success',3000);preGerarRedacao()}else{notify('Theme not detected','info',3000);showTools()}});
 }
 authenticate(function(user){buildUI();notify('Menu ready','success',3000)});
 })();
