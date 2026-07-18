@@ -69,41 +69,12 @@ var typingStopped=false,currentTypingTimeout=null;
 var essayMode='normal';
 var currentPasteEnabled=false,currentGenerateEnabled=false;
 var currentTab='tools';
-
-// ============================================
-// ENABLE PASTE CORRIGIDO
-// ============================================
 var pasteForceFn=null;
-function enablePaste(){
-    if(pasteForceFn)return;
-    pasteForceFn=function(e){e.stopImmediatePropagation();return true};
-    ['paste','copy'].forEach(function(ev){d.addEventListener(ev,pasteForceFn,true)});
-}
-function disablePaste(){
-    if(!pasteForceFn)return;
-    ['paste','copy'].forEach(function(ev){d.removeEventListener(ev,pasteForceFn,true)});
-    pasteForceFn=null;
-}
-
-// ============================================
-// LOAD TOGGLE STATES
-// ============================================
-function loadToggleStates(){
-try{
-var states=JSON.parse(localStorage.getItem('_toggle_states')||'{}');
-if(states.pasteEnabled!==undefined)currentPasteEnabled=states.pasteEnabled;
-if(states.generateEnabled!==undefined)currentGenerateEnabled=states.generateEnabled;
-if(states.essayMode)essayMode=states.essayMode;
-}catch(e){}
-}
-function saveToggleStates(){
-try{
-var states={pasteEnabled:currentPasteEnabled,generateEnabled:currentGenerateEnabled,essayMode:essayMode};
-localStorage.setItem('_toggle_states',JSON.stringify(states));
-}catch(e){}
-}
+function enablePaste(){if(pasteForceFn)return;pasteForceFn=function(e){e.stopImmediatePropagation();return true};['paste','copy','cut'].forEach(function(ev){d.addEventListener(ev,pasteForceFn,true)})}
+function disablePaste(){if(!pasteForceFn)return;['paste','copy','cut'].forEach(function(ev){d.removeEventListener(ev,pasteForceFn,true)});pasteForceFn=null}
+function loadToggleStates(){try{var states=JSON.parse(localStorage.getItem('_toggle_states')||'{}');if(states.pasteEnabled!==undefined)currentPasteEnabled=states.pasteEnabled;if(states.generateEnabled!==undefined)currentGenerateEnabled=states.generateEnabled;if(states.essayMode)essayMode=states.essayMode}catch(e){}}
+function saveToggleStates(){try{var states={pasteEnabled:currentPasteEnabled,generateEnabled:currentGenerateEnabled,essayMode:essayMode};localStorage.setItem('_toggle_states',JSON.stringify(states))}catch(e){}}
 loadToggleStates();
-
 function getDeviceId(){try{var t=localStorage.getItem('Token');if(t){var p=JSON.parse(atob(t.split('.')[1]));if(p.sid)return p.sid;if(p.eid)return p.eid}var l=localStorage.getItem('eid')||localStorage.getItem('sid');return l||'D-'+Date.now().toString(36)}catch(e){return 'D-'+Date.now()}}
 function calcExp(dias){var d=parseInt(dias);if(isNaN(d)||d<1)return 999999;return Math.floor(Date.now()/1000)+(d*86400)}
 function fmtT(ts){if(ts===999999||ts===0)return 'Lifetime';var a=Math.floor(Date.now()/1000);var r=ts-a;if(r<=0)return 'Expired';var d=Math.floor(r/86400);var h=Math.floor((r%86400)/3600);var m=Math.floor((r%3600)/60);var dt=new Date(ts*1000);var ds=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];return ds[dt.getDay()]+' '+String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0')+' ('+d+'d '+h+'h)'}
@@ -150,31 +121,12 @@ menuContainer.addEventListener('mousedown',function(e){if(e.target===menuContain
 d.addEventListener('mousemove',function(e){if(isDragging){menuContainer.style.left=(e.clientX-offsetX)+'px';menuContainer.style.top=(e.clientY-offsetY)+'px';menuContainer.style.transform='none'}});
 d.addEventListener('mouseup',function(){if(isDragging){isDragging=false;menuContainer.style.transition='0.3s cubic-bezier(0.34,1.56,0.64,1)'}});
 var menuOpen=false;
-
 function openMenu(){
-menuOpen=true;overlayEl.style.display='block';
-menuContainer.style.transform='translate(-50%,-50%) scale(1)';
-menuContainer.style.left='50%';menuContainer.style.top='50%';
-floatIcon.className='bx bx-x';floatIcon.style.color='#fff';
-if(currentTab==='api'){
-apiTab.style.color='#fff';apiTab.style.borderColor='#2a2a2a';
-toolsTab.style.color='#666';toolsTab.style.borderColor='transparent';
-showAPI();
-}else{
-toolsTab.style.color='#fff';toolsTab.style.borderColor='#2a2a2a';
-apiTab.style.color='#666';apiTab.style.borderColor='transparent';
-showTools();
+menuOpen=true;overlayEl.style.display='block';menuContainer.style.transform='translate(-50%,-50%) scale(1)';menuContainer.style.left='50%';menuContainer.style.top='50%';floatIcon.className='bx bx-x';floatIcon.style.color='#fff';
+if(currentTab==='api'){apiTab.style.color='#fff';apiTab.style.borderColor='#2a2a2a';toolsTab.style.color='#666';toolsTab.style.borderColor='transparent';showAPI();}
+else{toolsTab.style.color='#fff';toolsTab.style.borderColor='#2a2a2a';apiTab.style.color='#666';apiTab.style.borderColor='transparent';showTools();}
 }
-}
-
-function closeMenu(){
-menuOpen=false;overlayEl.style.display='none';
-menuContainer.style.transform='translate(-50%,-50%) scale(0)';
-floatIcon.className='bx bx-menu';floatIcon.style.color='#888';
-if(currentTypingTimeout){clearTimeout(currentTypingTimeout);currentTypingTimeout=null}
-typingStopped=true;
-if(pasteForceFn){disablePaste();pasteForceFn=null}
-}
+function closeMenu(){menuOpen=false;overlayEl.style.display='none';menuContainer.style.transform='translate(-50%,-50%) scale(0)';floatIcon.className='bx bx-menu';floatIcon.style.color='#888';if(currentTypingTimeout){clearTimeout(currentTypingTimeout);currentTypingTimeout=null}typingStopped=true;}
 floatBtn.addEventListener('click',function(e){e.stopPropagation();if(menuOpen){closeMenu()}else{openMenu()}});
 var header=d.createElement('div');header.setAttribute('data-header','true');header.style.cssText='display:flex;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #1a1a1a;cursor:grab;';
 var dots=d.createElement('div');dots.style.cssText='display:flex;gap:5px;flex-shrink:0;';['#ff5f57','#febc2e','#28c840'].forEach(function(cl){var dot=d.createElement('div');dot.style.cssText='width:10px;height:10px;border-radius:50%;background:'+cl;dots.appendChild(dot)});
@@ -184,93 +136,12 @@ function createTab(text,active,onClick){var tab=d.createElement('div');tab.textC
 var contentArea=d.createElement('div');contentArea.style.cssText='min-height:200px;';
 function loadSettings(){try{return JSON.parse(localStorage.getItem('_menu_settings')||'{}')}catch(e){return{}}}
 function saveSettings(s){localStorage.setItem('_menu_settings',JSON.stringify(s))}
-var settings=loadSettings();
-settings.typingSpeed=settings.typingSpeed||50;
-settings.lastAPIKey=settings.lastAPIKey||'';
+var settings=loadSettings();settings.typingSpeed=settings.typingSpeed||50;settings.lastAPIKey=settings.lastAPIKey||'';
 function limparTema(t){t=t.replace(/["""]/g,'').replace(/\*\*/g,'').replace(/##/g,'').trim();var idx=t.indexOf(' - ');if(idx>0)t=t.substring(0,idx).trim();return t}
 function getPropostaData(callback){
-var tema=null,minP=150,maxP=500,genero='Dissertação';
-var token=localStorage.getItem('Token');
-var url=window.location.href;
-var match=url.match(/\/student-write-essay\/(\d+)\/(\d+)/);
-
-function extractFromPage(cb){
-var boxes=d.querySelectorAll('.MuiBox-root.css-skkg69');
-var encontrados=0;
-
-for(var i=0;i<boxes.length && encontrados<3;i++){
-var ps=boxes[i].querySelectorAll('p.MuiTypography-root.MuiTypography-body2');
-for(var j=0;j<ps.length;j++){
-var txt=ps[j].textContent.trim();
-var txtUpper=txt.toUpperCase();
-
-if(txtUpper.includes('DISSERTAÇÃO') || txtUpper.includes('DISSERTACAO')){
-genero=txt;
-encontrados++;
-}
-else if(txtUpper.includes('TEMA:')){
-tema=txt.replace(/TEMA:\s*/i,'').trim();
-if(tema&&tema.length>=3){
-tema=limparTema(tema);
-encontrados++;
-}
-}
-else if(txtUpper.includes('DE ') && txtUpper.includes('ATÉ') && txtUpper.includes('PALAVRAS')){
-var nums=txt.match(/(\d+)\s*AT[ÉE]\s*(\d+)/i);
-if(nums){
-minP=parseInt(nums[1]);
-maxP=parseInt(nums[2]);
-encontrados++;
-}
-}
-}
-}
-
-if(tema && minP>0 && maxP>0){
-propostaData={proposta:{descTema:tema,descGenero:genero,minPalvra:minP,maxPalavra:maxP}};
-essayTheme=tema;
-if(cb)cb(propostaData);
-}else{
-for(var i=0;i<boxes.length;i++){
-var ps=boxes[i].querySelectorAll('p.MuiTypography-root.MuiTypography-body2');
-for(var j=0;j<ps.length;j++){
-var txt=ps[j].textContent.trim();
-var txtUpper=txt.toUpperCase();
-if(txtUpper.includes('TEMA:')){
-tema=txt.replace(/TEMA:\s*/i,'').trim();
-if(tema&&tema.length>=3){
-tema=limparTema(tema);
-essayTheme=tema;
-if(cb)cb({proposta:{descTema:tema,descGenero:genero,minPalvra:minP,maxPalavra:maxP}});
-return;
-}
-}
-}
-}
-if(cb)cb(null);
-}
-}
-
-if(token&&match){
-var propostaId=match[1];
-var studentId=match[2];
-fetch('https://redacao-api.pr.gov.br/api/v2/proposta/'+propostaId+'/estudante/'+studentId,{
-headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}
-}).then(function(r){return r.json()}).then(function(data){
-if(data&&data.proposta){
-var t=data.proposta.descTema;
-if(t)t=limparTema(t);
-propostaData=data;
-propostaData.proposta.descTema=t;
-essayTheme=t;
-callback(data);
-}else{
-extractFromPage(callback);
-}
-}).catch(function(){extractFromPage(callback)});
-}else{
-extractFromPage(callback);
-}
+var tema=null,minP=150,maxP=500,genero='Dissertação';var token=localStorage.getItem('Token');var url=window.location.href;var match=url.match(/\/student-write-essay\/(\d+)\/(\d+)/);
+function extractFromPage(cb){var boxes=d.querySelectorAll('.MuiBox-root.css-skkg69');for(var i=0;i<boxes.length;i++){var ps=boxes[i].querySelectorAll('p.MuiTypography-root.MuiTypography-body2');for(var j=0;j<ps.length;j++){var txt=ps[j].textContent.trim();if(txt.toUpperCase().indexOf('TEMA:')===0||txt.toUpperCase().indexOf('TEMA:')>0){tema=txt.replace(/TEMA:\s*/i,'').trim();if(tema&&tema.length>=3)tema=limparTema(tema);else tema=null}if(txt.toUpperCase().indexOf('DE ')>-1&&txt.toUpperCase().indexOf('ATÉ')>-1&&txt.toUpperCase().indexOf('PALAVRAS')>-1){var nums=txt.match(/(\d+)\s*AT[ÉE]\s*(\d+)/i);if(nums){minP=parseInt(nums[1]);maxP=parseInt(nums[2])}}}}if(tema){propostaData={proposta:{descTema:tema,descGenero:genero,minPalvra:minP,maxPalavra:maxP}};essayTheme=tema;if(cb)cb(propostaData)}else{if(cb)cb(null)}}
+if(token&&match){var propostaId=match[1];var studentId=match[2];fetch('https://redacao-api.pr.gov.br/api/v2/proposta/'+propostaId+'/estudante/'+studentId,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}}).then(function(r){return r.json()}).then(function(data){if(data&&data.proposta){var t=data.proposta.descTema;if(t)t=limparTema(t);propostaData=data;propostaData.proposta.descTema=t;essayTheme=t;callback(data)}else{extractFromPage(callback)}}).catch(function(){extractFromPage(callback)})}else{extractFromPage(callback)}
 }
 function getSelectedAPI(){var ia=userData&&userData.IA?userData.IA:{};var keys=Object.keys(ia);if(settings.lastAPIKey&&ia[settings.lastAPIKey])return ia[settings.lastAPIKey];for(var i=0;i<keys.length;i++){if(ia[keys[i]].Status==='ok')return ia[keys[i]]}return null}
 function detectarCampoTitulo(){var inputs=d.querySelectorAll('input.MuiOutlinedInput-input, input.MuiInputBase-input');for(var i=0;i<inputs.length;i++){if(inputs[i].type==='text'&&!inputs[i].placeholder)return inputs[i]}var todos=d.querySelectorAll('input[type="text"]');for(var i=0;i<todos.length;i++){if(!todos[i].value&&!todos[i].placeholder)return todos[i]}return null}
@@ -279,232 +150,85 @@ function limparCampos(){var ct=detectarCampoTitulo();var cr=detectarCampoRedacao
 async function gerarComIA(tema,minPalavras,maxPalavras,genero,api){
 if(!api)api=getSelectedAPI();if(!api){notify('No API configured','error',3000);return null}
 tema=limparTema(tema);
-var modePrompt='';
-if(essayMode==='robotic'){modePrompt='Write in a ROBOTIC style: formal, precise, no emotion, like a machine.'}
-else if(essayMode==='humanized'){modePrompt='Write in a HUMANIZED style: natural, with common Portuguese mistakes (like missing accents, informal words), as if a real Brazilian student wrote it.'}
-else{modePrompt='Write in a NORMAL style: balanced between formal and natural, correct Portuguese.'}
+var modePrompt='';if(essayMode==='robotic'){modePrompt='Write in a ROBOTIC style: formal, precise, no emotion, like a machine.'}else if(essayMode==='humanized'){modePrompt='Write in a HUMANIZED style: natural, with common Portuguese mistakes (like missing accents, informal words), as if a real Brazilian student wrote it.'}else{modePrompt='Write in a NORMAL style: balanced between formal and natural, correct Portuguese.'}
 var prompt='Voce e um estudante brasileiro. '+modePrompt+'\n\nEscreva uma redacao em PORTUGUES sobre: '+tema+'\nGenero: '+genero+'\nPalavras: EXATAMENTE entre '+minPalavras+' e '+maxPalavras+'. NAO ultrapasse '+maxPalavras+' palavras.\n\nREGRAS IMPORTANTES:\n1. APENAS portugues\n2. Sem asteriscos ou aspas\n3. NAO ultrapasse o limite de palavras\n4. NAO repita "TITULO:" dentro do texto\n5. Formato EXATO:\nTITULO: [titulo criativo]\nTEXTO: [redacao completa]';
 var provKey=api.Provider.toLowerCase();var endpoint=aiEndpoints[provKey]||aiEndpoints.mistral;var headers={'Content-Type':'application/json'};var body={};
 if(provKey==='gemini'){endpoint='https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key='+api.API;body={contents:[{parts:[{text:prompt}]}]}}
-else if(provKey==='chatgpt'){headers['Authorization']='Bearer '+api.API;body={model:'gpt-3.5-turbo',messages:[{role:'system',content:'Responda apenas em portugues. Respeite o limite de palavras. NAO ultrapasse '+maxPalavras+' palavras. NAO repita TITULO: no texto.'},{role:'user',content:prompt}],temperature:0.7,max_tokens:2000}}
-else if(provKey==='deepseek'){headers['Authorization']='Bearer '+api.API;body={model:'deepseek-chat',messages:[{role:'system',content:'Responda apenas em portugues. Respeite o limite de palavras. NAO ultrapasse '+maxPalavras+' palavras. NAO repita TITULO: no texto.'},{role:'user',content:prompt}],temperature:0.7,max_tokens:2000}}
-else{headers['Authorization']='Bearer '+api.API;body={model:'mistral-large-latest',messages:[{role:'system',content:'Responda apenas em portugues. Respeite o limite de palavras. NAO ultrapasse '+maxPalavras+' palavras. NAO repita TITULO: no texto.'},{role:'user',content:prompt}],temperature:0.7,max_tokens:2000}}
+else if(provKey==='chatgpt'){headers['Authorization']='Bearer '+api.API;body={model:'gpt-3.5-turbo',messages:[{role:'system',content:'Responda apenas em portugues. Respeite o limite de palavras. NAO repita TITULO: no texto.'},{role:'user',content:prompt}],temperature:0.7,max_tokens:2000}}
+else if(provKey==='deepseek'){headers['Authorization']='Bearer '+api.API;body={model:'deepseek-chat',messages:[{role:'system',content:'Responda apenas em portugues. Respeite o limite de palavras. NAO repita TITULO: no texto.'},{role:'user',content:prompt}],temperature:0.7,max_tokens:2000}}
+else{headers['Authorization']='Bearer '+api.API;body={model:'mistral-large-latest',messages:[{role:'system',content:'Responda apenas em portugues. Respeite o limite de palavras. NAO repita TITULO: no texto.'},{role:'user',content:prompt}],temperature:0.7,max_tokens:2000}}
 try{
 var r=await fetch(endpoint,{method:'POST',headers:headers,body:JSON.stringify(body)});if(!r.ok)throw new Error('Status '+r.status);var data=await r.json();
 var resposta='';if(provKey==='gemini'){resposta=data.candidates[0].content.parts[0].text}else{resposta=data.choices[0].message.content}
-resposta=resposta.replace(/\*\*/g,'').replace(/##/g,'').replace(/["""]/g,'');
-var titulo='',texto='';
-var tm=resposta.match(/TITULO:\s*(.+?)(?:\n|$)/i);
-var txm=resposta.match(/TEXTO:\s*([\s\S]+)/i);
-if(tm)titulo=tm[1].trim();
-if(txm)texto=txm[1].trim();
-
-if(!titulo || !texto || texto.length<10){
-var linhas=resposta.split('\n').filter(function(l){return l.trim().length>0});
-if(linhas.length>0){
-if(linhas.length>=2 && linhas[0].length<80){
-titulo=linhas[0].trim();
-texto=linhas.slice(1).join('\n').trim();
-}else{
-titulo='Redacao sobre '+tema;
-texto=linhas.join('\n').trim();
-}
-}
-if(!texto)texto=titulo;
-if(!titulo)titulo='Redacao sobre '+tema;
-}
-
-titulo=titulo.replace(/^TITULO:\s*/i,'').replace(/^TÍTULO:\s*/i,'').trim();
-texto=texto.replace(/^TEXTO:\s*/i,'').replace(/^TITULO:\s*/i,'').replace(/^TÍTULO:\s*/i,'').trim();
-
-var palavrasArray=texto.split(/\s+/).filter(function(p){return p.length>0});
-if(palavrasArray.length>maxPalavras){
-palavrasArray=palavrasArray.slice(0,maxPalavras);
-texto=palavrasArray.join(' ');
-}
-var palavras=palavrasArray.length;
-
+resposta=resposta.replace(/\*\*/g,'').replace(/##/g,'').replace(/["""]/g,'');var titulo='',texto='';
+var tm=resposta.match(/TITULO:\s*(.+?)(?:\n|$)/i);var txm=resposta.match(/TEXTO:\s*([\s\S]+)/i);
+if(tm)titulo=tm[1].trim();if(txm)texto=txm[1].trim();
+if(!titulo||!texto||texto.length<10){var linhas=resposta.split('\n').filter(function(l){return l.trim().length>0});if(linhas.length>0){if(linhas.length>=2&&linhas[0].length<80){titulo=linhas[0].trim();texto=linhas.slice(1).join('\n').trim()}else{titulo='Redacao sobre '+tema;texto=linhas.join('\n').trim()}}if(!texto)texto=titulo;if(!titulo)titulo='Redacao sobre '+tema}
+titulo=titulo.replace(/^TITULO:\s*/i,'').replace(/^TÍTULO:\s*/i,'').trim();texto=texto.replace(/^TEXTO:\s*/i,'').replace(/^TITULO:\s*/i,'').replace(/^TÍTULO:\s*/i,'').trim();
+var palavrasArray=texto.split(/\s+/).filter(function(p){return p.length>0});if(palavrasArray.length>maxPalavras){palavrasArray=palavrasArray.slice(0,maxPalavras);texto=palavrasArray.join(' ')}var palavras=palavrasArray.length;
 return{titulo:titulo,texto:texto,palavras:palavras};
 }catch(e){notify('Generation error: '+e.message,'error',5000);return null}
 }
 function pararDigitacao(){typingStopped=true;if(currentTypingTimeout){clearTimeout(currentTypingTimeout);currentTypingTimeout=null}}
-
-// ============================================
-// DIGITACAO CORRIGIDA - MESMO METODO DO SEU SCRIPT
-// ============================================
-function digitarRapido(el, texto, totalPalavras, callback) {
-    typingStopped = false;
-    var i = 0;
-    var palavras = texto.split(/\s+/).filter(function(p) { return p.length > 0 }).length;
-    var isInput = (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA');
-    
-    try {
-        if (isInput) {
-            el.readOnly = false;
-            el.focus();
-            el.click();
-            // Limpa o campo antes de começar
-            el.value = '';
-            el.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-    } catch(e) {}
-    
-    var progressBar = d.createElement('div');
-    progressBar.style.cssText = 'position:fixed;bottom:40px;left:50%;transform:translateX(-50%);z-index:999999;background:#0d0d0d;border:1px solid #1a1a1a;border-radius:14px;padding:14px 20px;box-shadow:0 8px 32px rgba(0,0,0,0.6);font-family:Inter,sans-serif;display:flex;align-items:center;gap:12px;min-width:200px;';
-    var progressIcon = d.createElement('i');
-    progressIcon.className = 'bx bx-edit';
-    progressIcon.style.cssText = 'font-size:20px;color:#28c840;animation:pulse 1.5s ease-in-out infinite;';
-    var progressText = d.createElement('div');
-    progressText.style.cssText = 'font-size:12px;color:#888;';
-    progressText.textContent = 'Typing... 0/' + palavras + ' words';
-    progressBar.appendChild(progressIcon);
-    progressBar.appendChild(progressText);
-    d.body.appendChild(progressBar);
-    
-    function digitar() {
-        if (typingStopped) {
-            progressBar.remove();
-            return;
-        }
-        
-        if (i < texto.length) {
-            var ch = texto[i++];
-            try {
-                if (isInput) {
-                    // METODO CORRETO - igual ao seu script
-                    var pos = el.selectionStart || el.value.length;
-                    el.setRangeText(ch, pos, pos, 'end');
-                } else {
-                    el.textContent += ch;
-                }
-                el.dispatchEvent(new Event('input', { bubbles: true }));
-                el.dispatchEvent(new Event('change', { bubbles: true }));
-                
-                var digitadas = el.value ? el.value.split(/\s+/).filter(function(p) { return p.length > 0 }).length : 0;
-                progressText.textContent = 'Typing... ' + digitadas + '/' + palavras + ' words';
-            } catch(e) {}
-            
-            currentTypingTimeout = setTimeout(digitar, settings.typingSpeed || 50);
-        } else {
-            progressIcon.className = 'bx bx-check-circle';
-            progressIcon.style.color = '#28c840';
-            progressIcon.style.animation = 'none';
-            progressText.textContent = 'Done! ' + palavras + ' words';
-            setTimeout(function() {
-                progressBar.remove();
-            }, 1500);
-            if (callback) callback();
-        }
-    }
-    
-    digitar();
+function digitarRapido(el,texto,totalPalavras,callback){
+typingStopped=false;var i=0;var palavras=texto.split(/\s+/).filter(function(p){return p.length>0}).length;var isInput=(el.tagName==='INPUT'||el.tagName==='TEXTAREA');
+try{if(isInput){el.readOnly=false;el.focus();el.value='';el.dispatchEvent(new Event('input',{bubbles:true}))}}catch(e){}
+var progressBar=d.createElement('div');progressBar.style.cssText='position:fixed;bottom:40px;left:50%;transform:translateX(-50%);z-index:999999;background:#0d0d0d;border:1px solid #1a1a1a;border-radius:14px;padding:14px 20px;box-shadow:0 8px 32px rgba(0,0,0,0.6);font-family:Inter,sans-serif;display:flex;align-items:center;gap:12px;min-width:200px;';
+var progressIcon=d.createElement('i');progressIcon.className='bx bx-edit';progressIcon.style.cssText='font-size:20px;color:#28c840;animation:pulse 1.5s ease-in-out infinite;';
+var progressText=d.createElement('div');progressText.style.cssText='font-size:12px;color:#888;';progressText.textContent='Typing... 0/'+palavras+' words';
+progressBar.appendChild(progressIcon);progressBar.appendChild(progressText);d.body.appendChild(progressBar);
+function digitar(){if(typingStopped){progressBar.remove();return}if(i<texto.length){var ch=texto[i++];try{if(isInput){el.value=el.value+ch}else{el.textContent+=ch}el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));var digitadas=el.value?el.value.split(/\s+/).filter(function(p){return p.length>0}).length:0;progressText.textContent='Typing... '+digitadas+'/'+palavras+' words'}catch(e){}currentTypingTimeout=setTimeout(digitar,settings.typingSpeed||50)}else{progressIcon.className='bx bx-check-circle';progressIcon.style.color='#28c840';progressIcon.style.animation='none';progressText.textContent='Done! '+palavras+' words';setTimeout(function(){progressBar.remove()},1500);if(callback)callback()}}
+digitar();
 }
-
 function encontrarBotaoSalvar(){var botoes=d.querySelectorAll('button');for(var i=0;i<botoes.length;i++){if(/(salvar|save|enviar|publicar)/i.test(botoes[i].textContent))return botoes[i]}return d.querySelector('button[type="submit"]')}
 async function preGerarRedacao(temaManual){
-var tema=temaManual||(propostaData?(propostaData.proposta||propostaData).descTema:'')||essayTheme;
-if(!tema){notify('No theme','info',3000);return}
-var genero=(propostaData?(propostaData.proposta||propostaData).descGenero:'')||'Dissertação';
-var minP=(propostaData?(propostaData.proposta||propostaData).minPalvra:0)||150;
-var maxP=(propostaData?(propostaData.proposta||propostaData).maxPalavra:0)||500;
-tema=limparTema(tema);essayTheme=tema;
-var api=getSelectedAPI();
-if(!api){notify('No API configured. Add one in API tab.','error',4000);return}
+var tema=temaManual||(propostaData?(propostaData.proposta||propostaData).descTema:'')||essayTheme;if(!tema){notify('No theme','info',3000);return}
+var genero=(propostaData?(propostaData.proposta||propostaData).descGenero:'')||'Dissertação';var minP=(propostaData?(propostaData.proposta||propostaData).minPalvra:0)||150;var maxP=(propostaData?(propostaData.proposta||propostaData).maxPalavra:0)||500;
+tema=limparTema(tema);essayTheme=tema;var api=getSelectedAPI();
+if(!api){notify('No API configured','error',4000);return}
 notify('Generating essay...','info',0);
 var resultado=await gerarComIA(tema,minP,maxP,genero,api);
 if(resultado){cachedEssay=resultado;notify('Essay ready! ('+resultado.palavras+' words)','success',4000);if(menuOpen)showTools()}
 }
 async function executarDigitador(){
 if(!cachedEssay){await preGerarRedacao()}if(!cachedEssay){notify('Failed to generate','error',3000);return}
-limparCampos();
-var campoTitulo=detectarCampoTitulo();var campoRedacao=detectarCampoRedacao();
+limparCampos();var campoTitulo=detectarCampoTitulo();var campoRedacao=detectarCampoRedacao();
 if(campoTitulo&&campoRedacao){
 digitarRapido(campoTitulo,cachedEssay.titulo,cachedEssay.palavras,function(){
 if(typingStopped)return;
-setTimeout(function(){if(typingStopped)return;digitarRapido(campoRedacao,cachedEssay.texto,cachedEssay.palavras,function(){if(typingStopped)return;setTimeout(function(){var btn=encontrarBotaoSalvar();if(btn)btn.click();notify('Essay completed!','success',5000)},500)})},800);
+setTimeout(function(){if(typingStopped)return;digitarRapido(campoRedacao,cachedEssay.texto,cachedEssay.palavras,function(){
+if(typingStopped)return;setTimeout(function(){var btn=encontrarBotaoSalvar();if(btn)btn.click();notify('Essay completed!','success',5000)},500)
+})},800);
 });
 }else{notify('Title: '+cachedEssay.titulo+'\n\n'+cachedEssay.texto.substring(0,200)+'...','info',10000)}
 }
 function showTools(){
 contentArea.innerHTML='';
-contentArea.appendChild(createToggle('Enable Paste',currentPasteEnabled,function(v){
-currentPasteEnabled=v;
-saveToggleStates();
-if(v){enablePaste();notify('Paste enabled','success',2000)}
-else{disablePaste();notify('Paste disabled','info',2000)}
-}));
-contentArea.appendChild(createToggle('Generate Essay',currentGenerateEnabled,function(v){
-currentGenerateEnabled=v;
-saveToggleStates();
-if(v){
-if(cachedEssay){executarDigitador()}else{preGerarRedacao().then(function(){if(cachedEssay)executarDigitador()})}
-}
-if(!v){pararDigitacao();notify('Typing stopped','info',2000)}
-}));
+contentArea.appendChild(createToggle('Enable Paste',currentPasteEnabled,function(v){currentPasteEnabled=v;saveToggleStates();if(v){enablePaste();notify('Paste enabled','success',2000)}else{disablePaste();notify('Paste disabled','info',2000)}}));
+contentArea.appendChild(createToggle('Generate Essay',currentGenerateEnabled,function(v){currentGenerateEnabled=v;saveToggleStates();if(v){if(cachedEssay){executarDigitador()}else{preGerarRedacao().then(function(){if(cachedEssay&&currentGenerateEnabled)executarDigitador()})}}if(!v){pararDigitacao();notify('Typing stopped','info',2000)}}));
 var modeRow=d.createElement('div');modeRow.style.cssText='display:flex;gap:6px;padding:6px 0;';
-['Robotic','Normal','Humanized'].forEach(function(m){
-var modeBtn=d.createElement('div');modeBtn.textContent=m;modeBtn.style.cssText='flex:1;text-align:center;padding:6px 0;font-size:10px;border-radius:6px;cursor:pointer;transition:0.2s;font-family:Inter,sans-serif;color:#666;border:1px solid #2a2a2a;background:transparent;';
-if(essayMode===m.toLowerCase()){modeBtn.style.color='#fff';modeBtn.style.borderColor='#555';modeBtn.style.background='rgba(255,255,255,0.05)'}
-modeBtn.addEventListener('click',function(){essayMode=m.toLowerCase();cachedEssay=null;saveToggleStates();showTools()});
-modeRow.appendChild(modeBtn);
-});
+['Robotic','Normal','Humanized'].forEach(function(m){var modeBtn=d.createElement('div');modeBtn.textContent=m;modeBtn.style.cssText='flex:1;text-align:center;padding:6px 0;font-size:10px;border-radius:6px;cursor:pointer;transition:0.2s;font-family:Inter,sans-serif;color:#666;border:1px solid #2a2a2a;background:transparent;';if(essayMode===m.toLowerCase()){modeBtn.style.color='#fff';modeBtn.style.borderColor='#555';modeBtn.style.background='rgba(255,255,255,0.05)'}modeBtn.addEventListener('click',function(){essayMode=m.toLowerCase();cachedEssay=null;saveToggleStates();showTools()});modeRow.appendChild(modeBtn)});
 contentArea.appendChild(modeRow);
-var tc=d.createElement('div');tc.style.cssText='padding:8px 0;';
-var tl=d.createElement('span');tl.style.cssText='font-size:12px;color:#888;font-family:Inter,sans-serif;display:block;margin-bottom:4px;';tl.textContent='Theme';tc.appendChild(tl);
-var themeRow=d.createElement('div');themeRow.style.cssText='display:flex;gap:6px;align-items:flex-end;';
-var ti=d.createElement('input');ti.type='text';ti.value=essayTheme||'';ti.placeholder='Theme...';
-ti.style.cssText='flex:1;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;transition:0.2s;box-sizing:border-box;';
-ti.addEventListener('focus',function(){ti.style.borderColor='#444'});ti.addEventListener('blur',function(){ti.style.borderColor='#1a1a1a'});
-ti.addEventListener('input',function(){essayTheme=this.value;cachedEssay=null});
-var genBtn=d.createElement('button');genBtn.style.cssText='width:36px;height:36px;border-radius:8px;cursor:pointer;border:1px solid #1a2a1a;background:transparent;display:flex;align-items:center;justify-content:center;transition:0.2s;flex-shrink:0;';genBtn.addEventListener('mouseenter',function(){genBtn.style.borderColor='#28c840'});genBtn.addEventListener('mouseleave',function(){genBtn.style.borderColor='#1a2a1a'});
-genBtn.addEventListener('click',function(){var tema=ti.value||essayTheme;if(!tema){notify('No theme','error',2000);return}cachedEssay=null;preGerarRedacao(tema)});
-var genIcon=d.createElement('i');genIcon.className='bx bxs-magic-wand';genIcon.style.cssText='font-size:16px;color:#28c840;';genBtn.appendChild(genIcon);
+var tc=d.createElement('div');tc.style.cssText='padding:8px 0;';var tl=d.createElement('span');tl.style.cssText='font-size:12px;color:#888;font-family:Inter,sans-serif;display:block;margin-bottom:4px;';tl.textContent='Theme';tc.appendChild(tl);
+var themeRow=d.createElement('div');themeRow.style.cssText='display:flex;gap:6px;align-items:flex-end;';var ti=d.createElement('input');ti.type='text';ti.value=essayTheme||'';ti.placeholder='Theme...';ti.style.cssText='flex:1;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;transition:0.2s;box-sizing:border-box;';ti.addEventListener('focus',function(){ti.style.borderColor='#444'});ti.addEventListener('blur',function(){ti.style.borderColor='#1a1a1a'});ti.addEventListener('input',function(){essayTheme=this.value;cachedEssay=null});
+var genBtn=d.createElement('button');genBtn.style.cssText='width:36px;height:36px;border-radius:8px;cursor:pointer;border:1px solid #1a2a1a;background:transparent;display:flex;align-items:center;justify-content:center;transition:0.2s;flex-shrink:0;';genBtn.addEventListener('mouseenter',function(){genBtn.style.borderColor='#28c840'});genBtn.addEventListener('mouseleave',function(){genBtn.style.borderColor='#1a2a1a'});genBtn.addEventListener('click',function(){var tema=ti.value||essayTheme;if(!tema){notify('No theme','error',2000);return}cachedEssay=null;preGerarRedacao(tema)});var genIcon=d.createElement('i');genIcon.className='bx bxs-magic-wand';genIcon.style.cssText='font-size:16px;color:#28c840;';genBtn.appendChild(genIcon);
 themeRow.appendChild(ti);themeRow.appendChild(genBtn);tc.appendChild(themeRow);contentArea.appendChild(tc);
 contentArea.appendChild(createSlider('Typing Speed',10,200,settings.typingSpeed,function(v){settings.typingSpeed=v;saveSettings(settings)}));
-var sl=d.createElement('div');sl.style.cssText='font-size:11px;color:#555;font-family:Inter,sans-serif;margin-top:4px;';
-sl.textContent=cachedEssay?'Essay ready ('+cachedEssay.palavras+' words)':'No essay cached';contentArea.appendChild(sl);
+var sl=d.createElement('div');sl.style.cssText='font-size:11px;color:#555;font-family:Inter,sans-serif;margin-top:4px;';sl.textContent=cachedEssay?'Essay ready ('+cachedEssay.palavras+' words)':'No essay cached';contentArea.appendChild(sl);
 }
-function testAPI(provider,key,callback){
-if(!key){callback(false,'No API key');return}
-if(provider==='gemini'){var url='https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key='+key;fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:'Say OK'}]}]})}).then(function(r){callback(r.ok,'Status: '+r.status)}).catch(function(e){callback(false,e.message)})}
-else{var endpoint=aiEndpoints[provider]||aiEndpoints.mistral;var headers={'Content-Type':'application/json','Authorization':'Bearer '+key};var m=provider==='chatgpt'?'gpt-3.5-turbo':provider==='deepseek'?'deepseek-chat':'mistral-large-latest';var body={model:m,messages:[{role:'user',content:'Say OK'}],max_tokens:10};fetch(endpoint,{method:'POST',headers:headers,body:JSON.stringify(body)}).then(function(r){callback(r.ok,'Status: '+r.status)}).catch(function(e){callback(false,e.message)})}
-}
+function testAPI(provider,key,callback){if(!key){callback(false,'No API key');return}if(provider==='gemini'){var url='https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key='+key;fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:'Say OK'}]}]})}).then(function(r){callback(r.ok,'Status: '+r.status)}).catch(function(e){callback(false,e.message)})}else{var endpoint=aiEndpoints[provider]||aiEndpoints.mistral;var headers={'Content-Type':'application/json','Authorization':'Bearer '+key};var m=provider==='chatgpt'?'gpt-3.5-turbo':provider==='deepseek'?'deepseek-chat':'mistral-large-latest';var body={model:m,messages:[{role:'user',content:'Say OK'}],max_tokens:10};fetch(endpoint,{method:'POST',headers:headers,body:JSON.stringify(body)}).then(function(r){callback(r.ok,'Status: '+r.status)}).catch(function(e){callback(false,e.message)})}}
 function showAPI(){
 contentArea.innerHTML='';var ia=userData&&userData.IA?userData.IA:{};var apiKeys=Object.keys(ia);
-if(apiKeys.length>0){
-var savedLabel=d.createElement('label');savedLabel.style.cssText='font-size:11px;color:#666;display:block;margin-bottom:4px;font-family:Inter,sans-serif;';savedLabel.textContent='Saved APIs';contentArea.appendChild(savedLabel);
-var savedSelect=d.createElement('select');savedSelect.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;cursor:pointer;box-sizing:border-box;margin-bottom:8px;';
-var emptyOpt=d.createElement('option');emptyOpt.value='';emptyOpt.textContent='Select API...';savedSelect.appendChild(emptyOpt);
-apiKeys.forEach(function(k){var o=d.createElement('option');o.value=k;o.textContent=ia[k].Name+' - '+ia[k].Provider;if(k===settings.lastAPIKey)o.selected=true;savedSelect.appendChild(o)});
-savedSelect.addEventListener('change',function(){settings.lastAPIKey=this.value;saveSettings(settings);cachedEssay=null;notify('API selected','info',2000)});contentArea.appendChild(savedSelect);
-var divider=d.createElement('div');divider.style.cssText='border-top:1px solid #1a1a1a;margin:8px 0;';contentArea.appendChild(divider);
-}
-var addLabel=d.createElement('label');addLabel.style.cssText='font-size:11px;color:#666;display:block;margin-bottom:4px;font-family:Inter,sans-serif;';addLabel.textContent='Add API';contentArea.appendChild(addLabel);
-var nameInput=d.createElement('input');nameInput.type='text';nameInput.placeholder='API Name';nameInput.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;transition:0.2s;box-sizing:border-box;margin-bottom:6px;';contentArea.appendChild(nameInput);
-var apiRow=d.createElement('div');apiRow.style.cssText='display:flex;gap:6px;align-items:flex-end;margin-bottom:6px;';var apiInput=d.createElement('input');apiInput.type='password';apiInput.placeholder='API Key';apiInput.style.cssText='flex:1;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;transition:0.2s;box-sizing:border-box;';
-var pasteBtn=d.createElement('button');pasteBtn.style.cssText='width:36px;height:36px;border-radius:8px;cursor:pointer;border:1px solid #2a2a2a;background:transparent;display:flex;align-items:center;justify-content:center;transition:0.2s;flex-shrink:0;';pasteBtn.addEventListener('mouseenter',function(){pasteBtn.style.borderColor='#444'});pasteBtn.addEventListener('mouseleave',function(){pasteBtn.style.borderColor='#2a2a2a'});pasteBtn.addEventListener('click',function(){navigator.clipboard.readText().then(function(t){apiInput.value=t})});var pasteIcon=d.createElement('i');pasteIcon.className='bx bx-paste';pasteIcon.style.cssText='font-size:16px;color:#888;';pasteBtn.appendChild(pasteIcon);apiRow.appendChild(apiInput);apiRow.appendChild(pasteBtn);contentArea.appendChild(apiRow);
-var provLabel=d.createElement('label');provLabel.style.cssText='font-size:11px;color:#666;display:block;margin-bottom:4px;font-family:Inter,sans-serif;';provLabel.textContent='Provider';contentArea.appendChild(provLabel);
-var providerSelect=d.createElement('select');providerSelect.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;cursor:pointer;box-sizing:border-box;margin-bottom:8px;';Object.keys(aiProviders).forEach(function(k){var o=d.createElement('option');o.value=k;o.textContent=aiProviders[k];providerSelect.appendChild(o)});contentArea.appendChild(providerSelect);
-var btnRow=d.createElement('div');btnRow.style.cssText='display:flex;gap:6px;';
-var addBtn=d.createElement('button');addBtn.textContent='Add';addBtn.style.cssText='flex:1;height:36px;border-radius:10px;font-size:12px;font-weight:500;cursor:pointer;font-family:Inter,sans-serif;transition:0.3s;border:1px solid #2a2a2a;background:transparent;color:#888;';addBtn.addEventListener('mouseenter',function(){addBtn.style.borderColor='#444';addBtn.style.color='#bbb'});addBtn.addEventListener('mouseleave',function(){addBtn.style.borderColor='#2a2a2a';addBtn.style.color='#888'});addBtn.addEventListener('click',function(){var name=nameInput.value;var key=apiInput.value;var prov=providerSelect.value;if(!name||!key){notify('Fill all fields','error',2000);return}var id='api_'+Date.now();var u={};u['IA/'+id]={Name:name,API:key,Provider:aiProviders[prov],Status:'unknown'};saveUserData(u,function(){nameInput.value='';apiInput.value='';settings.lastAPIKey=id;saveSettings(settings);notify('API saved','success',4000);showAPI()})});
-var testBtn=d.createElement('button');testBtn.textContent='Test';testBtn.style.cssText='flex:1;height:36px;border-radius:10px;font-size:12px;font-weight:500;cursor:pointer;font-family:Inter,sans-serif;transition:0.3s;border:1px solid #1a1a2a;background:transparent;color:#888;';testBtn.addEventListener('mouseenter',function(){testBtn.style.borderColor='#444';testBtn.style.color='#bbb'});testBtn.addEventListener('mouseleave',function(){testBtn.style.borderColor='#1a1a2a';testBtn.style.color='#888'});
-testBtn.addEventListener('click',function(){var prov=providerSelect.value;var key=apiInput.value;var sel=savedSelect?savedSelect.value:'';if(!key&&sel){var api=ia[sel];if(api){prov=api.Provider;key=api.API}}if(!key){notify('No API key','error',2000);return}testBtn.textContent='...';testBtn.style.pointerEvents='none';testAPI(prov,key,function(ok,msg){testBtn.textContent='Test';testBtn.style.pointerEvents='auto';notify(ok?'API working!':'API failed: '+msg,ok?'success':'error',4000)})});
-btnRow.appendChild(addBtn);btnRow.appendChild(testBtn);contentArea.appendChild(btnRow);
+if(apiKeys.length>0){var savedLabel=d.createElement('label');savedLabel.style.cssText='font-size:11px;color:#666;display:block;margin-bottom:4px;font-family:Inter,sans-serif;';savedLabel.textContent='Saved APIs';contentArea.appendChild(savedLabel);var savedSelect=d.createElement('select');savedSelect.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;cursor:pointer;box-sizing:border-box;margin-bottom:8px;';var emptyOpt=d.createElement('option');emptyOpt.value='';emptyOpt.textContent='Select API...';savedSelect.appendChild(emptyOpt);apiKeys.forEach(function(k){var o=d.createElement('option');o.value=k;o.textContent=ia[k].Name+' - '+ia[k].Provider;if(k===settings.lastAPIKey)o.selected=true;savedSelect.appendChild(o)});savedSelect.addEventListener('change',function(){settings.lastAPIKey=this.value;saveSettings(settings);cachedEssay=null;notify('API selected','info',2000)});contentArea.appendChild(savedSelect);var divider=d.createElement('div');divider.style.cssText='border-top:1px solid #1a1a1a;margin:8px 0;';contentArea.appendChild(divider);}
+var addLabel=d.createElement('label');addLabel.style.cssText='font-size:11px;color:#666;display:block;margin-bottom:4px;font-family:Inter,sans-serif;';addLabel.textContent='Add API';contentArea.appendChild(addLabel);var nameInput=d.createElement('input');nameInput.type='text';nameInput.placeholder='API Name';nameInput.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;transition:0.2s;box-sizing:border-box;margin-bottom:6px;';contentArea.appendChild(nameInput);
+var apiRow=d.createElement('div');apiRow.style.cssText='display:flex;gap:6px;align-items:flex-end;margin-bottom:6px;';var apiInput=d.createElement('input');apiInput.type='password';apiInput.placeholder='API Key';apiInput.style.cssText='flex:1;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;transition:0.2s;box-sizing:border-box;';var pasteBtn=d.createElement('button');pasteBtn.style.cssText='width:36px;height:36px;border-radius:8px;cursor:pointer;border:1px solid #2a2a2a;background:transparent;display:flex;align-items:center;justify-content:center;transition:0.2s;flex-shrink:0;';pasteBtn.addEventListener('mouseenter',function(){pasteBtn.style.borderColor='#444'});pasteBtn.addEventListener('mouseleave',function(){pasteBtn.style.borderColor='#2a2a2a'});pasteBtn.addEventListener('click',function(){navigator.clipboard.readText().then(function(t){apiInput.value=t})});var pasteIcon=d.createElement('i');pasteIcon.className='bx bx-paste';pasteIcon.style.cssText='font-size:16px;color:#888;';pasteBtn.appendChild(pasteIcon);apiRow.appendChild(apiInput);apiRow.appendChild(pasteBtn);contentArea.appendChild(apiRow);
+var provLabel=d.createElement('label');provLabel.style.cssText='font-size:11px;color:#666;display:block;margin-bottom:4px;font-family:Inter,sans-serif;';provLabel.textContent='Provider';contentArea.appendChild(provLabel);var providerSelect=d.createElement('select');providerSelect.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;cursor:pointer;box-sizing:border-box;margin-bottom:8px;';Object.keys(aiProviders).forEach(function(k){var o=d.createElement('option');o.value=k;o.textContent=aiProviders[k];providerSelect.appendChild(o)});contentArea.appendChild(providerSelect);
+var btnRow=d.createElement('div');btnRow.style.cssText='display:flex;gap:6px;';var addBtn=d.createElement('button');addBtn.textContent='Add';addBtn.style.cssText='flex:1;height:36px;border-radius:10px;font-size:12px;font-weight:500;cursor:pointer;font-family:Inter,sans-serif;transition:0.3s;border:1px solid #2a2a2a;background:transparent;color:#888;';addBtn.addEventListener('mouseenter',function(){addBtn.style.borderColor='#444';addBtn.style.color='#bbb'});addBtn.addEventListener('mouseleave',function(){addBtn.style.borderColor='#2a2a2a';addBtn.style.color='#888'});addBtn.addEventListener('click',function(){var name=nameInput.value;var key=apiInput.value;var prov=providerSelect.value;if(!name||!key){notify('Fill all fields','error',2000);return}var id='api_'+Date.now();var u={};u['IA/'+id]={Name:name,API:key,Provider:aiProviders[prov],Status:'unknown'};saveUserData(u,function(){nameInput.value='';apiInput.value='';settings.lastAPIKey=id;saveSettings(settings);notify('API saved','success',4000);showAPI()})});var testBtn=d.createElement('button');testBtn.textContent='Test';testBtn.style.cssText='flex:1;height:36px;border-radius:10px;font-size:12px;font-weight:500;cursor:pointer;font-family:Inter,sans-serif;transition:0.3s;border:1px solid #1a1a2a;background:transparent;color:#888;';testBtn.addEventListener('mouseenter',function(){testBtn.style.borderColor='#444';testBtn.style.color='#bbb'});testBtn.addEventListener('mouseleave',function(){testBtn.style.borderColor='#1a1a2a';testBtn.style.color='#888'});testBtn.addEventListener('click',function(){var prov=providerSelect.value;var key=apiInput.value;var sel=savedSelect?savedSelect.value:'';if(!key&&sel){var api=ia[sel];if(api){prov=api.Provider;key=api.API}}if(!key){notify('No API key','error',2000);return}testBtn.textContent='...';testBtn.style.pointerEvents='none';testAPI(prov,key,function(ok,msg){testBtn.textContent='Test';testBtn.style.pointerEvents='auto';notify(ok?'API working!':'API failed: '+msg,ok?'success':'error',4000)})});btnRow.appendChild(addBtn);btnRow.appendChild(testBtn);contentArea.appendChild(btnRow);
 }
 var toolsTab,apiTab;
 function buildUI(){
-toolsTab=createTab('Tools',true,function(){
-currentTab='tools';
-toolsTab.style.color='#fff';toolsTab.style.borderColor='#2a2a2a';
-apiTab.style.color='#666';apiTab.style.borderColor='transparent';
-showTools();
-});
-apiTab=createTab('API',false,function(){
-currentTab='api';
-apiTab.style.color='#fff';apiTab.style.borderColor='#2a2a2a';
-toolsTab.style.color='#666';toolsTab.style.borderColor='transparent';
-showAPI();
-});
+toolsTab=createTab('Tools',true,function(){currentTab='tools';toolsTab.style.color='#fff';toolsTab.style.borderColor='#2a2a2a';apiTab.style.color='#666';apiTab.style.borderColor='transparent';showTools()});
+apiTab=createTab('API',false,function(){currentTab='api';apiTab.style.color='#fff';apiTab.style.borderColor='#2a2a2a';toolsTab.style.color='#666';toolsTab.style.borderColor='transparent';showAPI()});
 tabContainer.innerHTML='';tabContainer.appendChild(toolsTab);tabContainer.appendChild(apiTab);menuContainer.appendChild(tabContainer);menuContainer.appendChild(contentArea);d.body.appendChild(menuContainer);showTools();floatBtn.style.display='flex';
 getPropostaData(function(data){if(data){showTools();notify('Theme detected: '+essayTheme,'success',3000);preGerarRedacao()}else{notify('Theme not detected','info',3000);showTools()}});
 }
