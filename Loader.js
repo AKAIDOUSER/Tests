@@ -73,7 +73,6 @@ var essayMode='normal';
 var currentPasteEnabled=false,currentGenerateEnabled=false;
 var currentTab='tools';
 
-// Load saved toggle states
 function loadToggleStates(){
 try{
 var states=JSON.parse(localStorage.getItem('_toggle_states')||'{}');
@@ -160,9 +159,6 @@ floatIcon.className='bx bx-menu';floatIcon.style.color='#888';
 if(currentTypingTimeout){clearTimeout(currentTypingTimeout);currentTypingTimeout=null}
 typingStopped=true;
 if(pasteForceFn){disablePaste();pasteForceFn=null}
-// Don't reset toggles when closing menu
-// currentPasteEnabled=false;
-// currentGenerateEnabled=false;
 }
 floatBtn.addEventListener('click',function(e){e.stopPropagation();if(menuOpen){closeMenu()}else{openMenu()}});
 var header=d.createElement('div');header.setAttribute('data-header','true');header.style.cssText='display:flex;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #1a1a1a;cursor:grab;';
@@ -178,9 +174,94 @@ settings.typingSpeed=settings.typingSpeed||50;
 settings.lastAPIKey=settings.lastAPIKey||'';
 function limparTema(t){t=t.replace(/["""]/g,'').replace(/\*\*/g,'').replace(/##/g,'').trim();var idx=t.indexOf(' - ');if(idx>0)t=t.substring(0,idx).trim();return t}
 function getPropostaData(callback){
-var tema=null,minP=150,maxP=500,genero='Dissertação';var token=localStorage.getItem('Token');var url=window.location.href;var match=url.match(/\/student-write-essay\/(\d+)\/(\d+)/);
-function extractFromPage(cb){var boxes=d.querySelectorAll('.MuiBox-root.css-skkg69');for(var i=0;i<boxes.length;i++){var ps=boxes[i].querySelectorAll('p.MuiTypography-root.MuiTypography-body2');for(var j=0;j<ps.length;j++){var txt=ps[j].textContent.trim();if(txt.toUpperCase().indexOf('TEMA:')===0||txt.toUpperCase().indexOf('TEMA:')>0){tema=txt.replace(/TEMA:\s*/i,'').trim();if(tema&&tema.length>=3)tema=limparTema(tema);else tema=null}if(txt.toUpperCase().indexOf('DE ')>-1&&txt.toUpperCase().indexOf('ATÉ')>-1&&txt.toUpperCase().indexOf('PALAVRAS')>-1){var nums=txt.match(/(\d+)\s*AT[ÉE]\s*(\d+)/i);if(nums){minP=parseInt(nums[1]);maxP=parseInt(nums[2])}}}}if(tema){propostaData={proposta:{descTema:tema,descGenero:genero,minPalvra:minP,maxPalavra:maxP}};essayTheme=tema;if(cb)cb(propostaData)}else{if(cb)cb(null)}}
-if(token&&match){var propostaId=match[1];var studentId=match[2];fetch('https://redacao-api.pr.gov.br/api/v2/proposta/'+propostaId+'/estudante/'+studentId,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}}).then(function(r){return r.json()}).then(function(data){if(data&&data.proposta){var t=data.proposta.descTema;if(t)t=limparTema(t);propostaData=data;propostaData.proposta.descTema=t;essayTheme=t;callback(data)}else{extractFromPage(callback)}}).catch(function(){extractFromPage(callback)})}else{extractFromPage(callback)}
+var tema=null,minP=150,maxP=500,genero='Dissertação';
+var token=localStorage.getItem('Token');
+var url=window.location.href;
+var match=url.match(/\/student-write-essay\/(\d+)\/(\d+)/);
+
+function extractFromPage(cb){
+// Pega todas as divs com a classe css-skkg69
+var boxes=d.querySelectorAll('.MuiBox-root.css-skkg69');
+var encontrados=0;
+
+for(var i=0;i<boxes.length && encontrados<3;i++){
+var ps=boxes[i].querySelectorAll('p.MuiTypography-root.MuiTypography-body2');
+for(var j=0;j<ps.length;j++){
+var txt=ps[j].textContent.trim();
+var txtUpper=txt.toUpperCase();
+
+// Primeira div: genero (Dissertacao)
+if(txtUpper.includes('DISSERTAÇÃO') || txtUpper.includes('DISSERTACAO')){
+genero=txt;
+encontrados++;
+}
+// Segunda div: tema
+else if(txtUpper.includes('TEMA:')){
+tema=txt.replace(/TEMA:\s*/i,'').trim();
+if(tema&&tema.length>=3){
+tema=limparTema(tema);
+encontrados++;
+}
+}
+// Terceira div: palavras min e max
+else if(txtUpper.includes('DE ') && txtUpper.includes('ATÉ') && txtUpper.includes('PALAVRAS')){
+var nums=txt.match(/(\d+)\s*AT[ÉE]\s*(\d+)/i);
+if(nums){
+minP=parseInt(nums[1]);
+maxP=parseInt(nums[2]);
+encontrados++;
+}
+}
+}
+}
+
+// Se encontrou pelo menos tema e palavras, considera sucesso
+if(tema && minP>0 && maxP>0){
+propostaData={proposta:{descTema:tema,descGenero:genero,minPalvra:minP,maxPalavra:maxP}};
+essayTheme=tema;
+if(cb)cb(propostaData);
+}else{
+// Fallback: tenta encontrar qualquer tema
+for(var i=0;i<boxes.length;i++){
+var ps=boxes[i].querySelectorAll('p.MuiTypography-root.MuiTypography-body2');
+for(var j=0;j<ps.length;j++){
+var txt=ps[j].textContent.trim();
+var txtUpper=txt.toUpperCase();
+if(txtUpper.includes('TEMA:')){
+tema=txt.replace(/TEMA:\s*/i,'').trim();
+if(tema&&tema.length>=3){
+tema=limparTema(tema);
+essayTheme=tema;
+if(cb)cb({proposta:{descTema:tema,descGenero:genero,minPalvra:minP,maxPalavra:maxP}});
+return;
+}
+}
+}
+}
+if(cb)cb(null);
+}
+}
+
+if(token&&match){
+var propostaId=match[1];
+var studentId=match[2];
+fetch('https://redacao-api.pr.gov.br/api/v2/proposta/'+propostaId+'/estudante/'+studentId,{
+headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}
+}).then(function(r){return r.json()}).then(function(data){
+if(data&&data.proposta){
+var t=data.proposta.descTema;
+if(t)t=limparTema(t);
+propostaData=data;
+propostaData.proposta.descTema=t;
+essayTheme=t;
+callback(data);
+}else{
+extractFromPage(callback);
+}
+}).catch(function(){extractFromPage(callback)});
+}else{
+extractFromPage(callback);
+}
 }
 function getSelectedAPI(){var ia=userData&&userData.IA?userData.IA:{};var keys=Object.keys(ia);if(settings.lastAPIKey&&ia[settings.lastAPIKey])return ia[settings.lastAPIKey];for(var i=0;i<keys.length;i++){if(ia[keys[i]].Status==='ok')return ia[keys[i]]}return null}
 function detectarCampoTitulo(){var inputs=d.querySelectorAll('input.MuiOutlinedInput-input, input.MuiInputBase-input');for(var i=0;i<inputs.length;i++){if(inputs[i].type==='text'&&!inputs[i].placeholder)return inputs[i]}var todos=d.querySelectorAll('input[type="text"]');for(var i=0;i<todos.length;i++){if(!todos[i].value&&!todos[i].placeholder)return todos[i]}return null}
@@ -208,21 +289,33 @@ var tm=resposta.match(/TITULO:\s*(.+?)(?:\n|$)/i);
 var txm=resposta.match(/TEXTO:\s*([\s\S]+)/i);
 if(tm)titulo=tm[1].trim();
 if(txm)texto=txm[1].trim();
-// FIX: Fallback quando os formatos nao sao encontrados
-if(!titulo && !texto){
+
+// FIX MELHORADO: Fallback quando os formatos nao sao encontrados
+if(!titulo || !texto || texto.length<10){
 var linhas=resposta.split('\n').filter(function(l){return l.trim().length>0});
 if(linhas.length>0){
-// Primeira linha como titulo, resto como texto
+// Tenta encontrar titulo (primeira linha curta ou que nao parece ser texto)
+if(linhas.length>=2 && linhas[0].length<80){
 titulo=linhas[0].trim();
 texto=linhas.slice(1).join('\n').trim();
-// Se nao tiver texto, usa a primeira linha como texto tambem
+}else{
+// Se so tem uma linha ou a primeira linha e longa, usa como texto
+titulo='Redacao sobre '+tema;
+texto=linhas.join('\n').trim();
+}
+}
+// Se ainda nao tem texto, usa o que veio
 if(!texto)texto=titulo;
+if(!titulo)titulo='Redacao sobre '+tema;
 }
-}
+
 // Remove prefixos residuais
 titulo=titulo.replace(/^TITULO:\s*/i,'').replace(/^TÍTULO:\s*/i,'').trim();
 texto=texto.replace(/^TEXTO:\s*/i,'').replace(/^TITULO:\s*/i,'').replace(/^TÍTULO:\s*/i,'').trim();
+
+// Conta palavras corretamente
 var palavras=texto.split(/\s+/).filter(function(p){return p.length>0}).length;
+
 return{titulo:titulo,texto:texto,palavras:palavras};
 }catch(e){notify('Generation error: '+e.message,'error',5000);return null}
 }
@@ -250,6 +343,7 @@ var minP=(propostaData?(propostaData.proposta||propostaData).minPalvra:0)||150;
 var maxP=(propostaData?(propostaData.proposta||propostaData).maxPalavra:0)||500;
 tema=limparTema(tema);essayTheme=tema;
 var api=getSelectedAPI();
+if(!api){notify('No API configured. Add one in API tab.','error',4000);return}
 notify('Generating essay...','info',0);
 var resultado=await gerarComIA(tema,minP,maxP,genero,api);
 if(resultado){cachedEssay=resultado;notify('Essay ready! ('+resultado.palavras+' words)','success',4000);if(menuOpen)showTools()}
@@ -344,7 +438,7 @@ toolsTab.style.color='#666';toolsTab.style.borderColor='transparent';
 showAPI();
 });
 tabContainer.innerHTML='';tabContainer.appendChild(toolsTab);tabContainer.appendChild(apiTab);menuContainer.appendChild(tabContainer);menuContainer.appendChild(contentArea);d.body.appendChild(menuContainer);showTools();floatBtn.style.display='flex';
-getPropostaData(function(data){if(data){showTools();notify('Theme detected','success',3000);preGerarRedacao()}else{notify('Theme not detected','info',3000);showTools()}});
+getPropostaData(function(data){if(data){showTools();notify('Theme detected: '+essayTheme,'success',3000);preGerarRedacao()}else{notify('Theme not detected','info',3000);showTools()}});
 }
 authenticate(function(user){buildUI();notify('Menu ready','success',3000)});
 })();
