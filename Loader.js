@@ -62,8 +62,16 @@ c.appendChild(st);s.addEventListener('input',function(){v.textContent=this.value
 c.appendChild(h);c.appendChild(s);return c;
 }
 var pasteForceFn=null;
-function enablePaste(){if(pasteForceFn)return;pasteForceFn=function(e){e.stopImmediatePropagation();return true};['paste','copy'].forEach(function(ev){d.addEventListener(ev,pasteForceFn,true)})}
-function disablePaste(){if(!pasteForceFn)return;['paste','copy'].forEach(function(ev){d.removeEventListener(ev,pasteForceFn,true)});pasteForceFn=null}
+function enablePaste(){
+if(pasteForceFn)return;
+pasteForceFn=function(e){e.stopImmediatePropagation();return true};
+['paste','copy'].forEach(function(ev){d.addEventListener(ev,pasteForceFn,true)});
+}
+function disablePaste(){
+if(!pasteForceFn)return;
+['paste','copy'].forEach(function(ev){d.removeEventListener(ev,pasteForceFn,true)});
+pasteForceFn=null;
+}
 var userKey=null,userData=null;
 var aiProviders={chatgpt:'ChatGPT',gemini:'Gemini',deepseek:'DeepSeek',mistral:'Mistral'};
 var aiEndpoints={chatgpt:'https://api.openai.com/v1/chat/completions',gemini:'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=',deepseek:'https://api.deepseek.com/v1/chat/completions',mistral:'https://api.mistral.ai/v1/chat/completions'};
@@ -302,7 +310,6 @@ if(!titulo)titulo='Redacao sobre '+tema;
 titulo=titulo.replace(/^TITULO:\s*/i,'').replace(/^TÍTULO:\s*/i,'').trim();
 texto=texto.replace(/^TEXTO:\s*/i,'').replace(/^TITULO:\s*/i,'').replace(/^TÍTULO:\s*/i,'').trim();
 
-// CORRECAO: Limita o texto ao maximo de palavras
 var palavrasArray=texto.split(/\s+/).filter(function(p){return p.length>0});
 if(palavrasArray.length>maxPalavras){
 palavrasArray=palavrasArray.slice(0,maxPalavras);
@@ -314,45 +321,72 @@ return{titulo:titulo,texto:texto,palavras:palavras};
 }catch(e){notify('Generation error: '+e.message,'error',5000);return null}
 }
 function pararDigitacao(){typingStopped=true;if(currentTypingTimeout){clearTimeout(currentTypingTimeout);currentTypingTimeout=null}}
-function digitarRapido(el,texto,totalPalavras,callback){
-typingStopped=false;
-var i=0;
-var palavras=texto.split(/\s+/).filter(function(p){return p.length>0}).length;
-var isInput=(el.tagName==='INPUT'||el.tagName==='TEXTAREA');
-try{if(isInput){el.readOnly=false;el.focus();el.click();if(el.value)el.setSelectionRange(el.value.length,el.value.length)}}catch(e){}
-var progressBar=d.createElement('div');progressBar.style.cssText='position:fixed;bottom:40px;left:50%;transform:translateX(-50%);z-index:999999;background:#0d0d0d;border:1px solid #1a1a1a;border-radius:14px;padding:14px 20px;box-shadow:0 8px 32px rgba(0,0,0,0.6);font-family:Inter,sans-serif;display:flex;align-items:center;gap:12px;min-width:200px;';
-var progressIcon=d.createElement('i');progressIcon.className='bx bx-edit';progressIcon.style.cssText='font-size:20px;color:#28c840;animation:pulse 1.5s ease-in-out infinite;';
-var progressText=d.createElement('div');progressText.style.cssText='font-size:12px;color:#888;';progressText.textContent='Typing... 0/'+palavras+' words';
-progressBar.appendChild(progressIcon);progressBar.appendChild(progressText);d.body.appendChild(progressBar);
-function digitar(){
-if(typingStopped){progressBar.remove();return}
-if(i<texto.length){
-var ch=texto[i++];
-try{
-if(isInput){
-var pos=el.selectionStart || 0;
-var val=el.value;
-el.value=val.substring(0,pos)+ch+val.substring(pos);
-el.selectionStart=el.selectionEnd=pos+1;
-}else{
-el.textContent+=ch;
-}
-el.dispatchEvent(new Event('input',{bubbles:true}));
-el.dispatchEvent(new Event('change',{bubbles:true}));
-var digitadas=el.value?el.value.split(/\s+/).filter(function(p){return p.length>0}).length:0;
-progressText.textContent='Typing... '+digitadas+'/'+palavras+' words';
-}catch(e){}
-currentTypingTimeout=setTimeout(digitar,settings.typingSpeed||50);
-}else{
-progressIcon.className='bx bx-check-circle';
-progressIcon.style.color='#28c840';
-progressIcon.style.animation='none';
-progressText.textContent='Done! '+palavras+' words';
-setTimeout(function(){progressBar.remove()},1500);
-if(callback)callback();
-}
-}
-digitar();
+function digitarRapido(el, texto, totalPalavras, callback) {
+    typingStopped = false;
+    var i = 0;
+    var palavras = texto.split(/\s+/).filter(function(p) { return p.length > 0 }).length;
+    var isInput = (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA');
+    
+    try {
+        if (isInput) {
+            el.readOnly = false;
+            el.focus();
+            el.click();
+            el.value = '';
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    } catch(e) {}
+    
+    var progressBar = d.createElement('div');
+    progressBar.style.cssText = 'position:fixed;bottom:40px;left:50%;transform:translateX(-50%);z-index:999999;background:#0d0d0d;border:1px solid #1a1a1a;border-radius:14px;padding:14px 20px;box-shadow:0 8px 32px rgba(0,0,0,0.6);font-family:Inter,sans-serif;display:flex;align-items:center;gap:12px;min-width:200px;';
+    var progressIcon = d.createElement('i');
+    progressIcon.className = 'bx bx-edit';
+    progressIcon.style.cssText = 'font-size:20px;color:#28c840;animation:pulse 1.5s ease-in-out infinite;';
+    var progressText = d.createElement('div');
+    progressText.style.cssText = 'font-size:12px;color:#888;';
+    progressText.textContent = 'Typing... 0/' + palavras + ' words';
+    progressBar.appendChild(progressIcon);
+    progressBar.appendChild(progressText);
+    d.body.appendChild(progressBar);
+    
+    function digitar() {
+        if (typingStopped) {
+            progressBar.remove();
+            return;
+        }
+        
+        if (i < texto.length) {
+            var ch = texto[i++];
+            try {
+                if (isInput) {
+                    var pos = el.selectionStart || el.value.length;
+                    var val = el.value;
+                    el.value = val.substring(0, pos) + ch + val.substring(pos);
+                    el.selectionStart = el.selectionEnd = pos + 1;
+                } else {
+                    el.textContent += ch;
+                }
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+                
+                var digitadas = el.value ? el.value.split(/\s+/).filter(function(p) { return p.length > 0 }).length : 0;
+                progressText.textContent = 'Typing... ' + digitadas + '/' + palavras + ' words';
+            } catch(e) {}
+            
+            currentTypingTimeout = setTimeout(digitar, settings.typingSpeed || 50);
+        } else {
+            progressIcon.className = 'bx bx-check-circle';
+            progressIcon.style.color = '#28c840';
+            progressIcon.style.animation = 'none';
+            progressText.textContent = 'Done! ' + palavras + ' words';
+            setTimeout(function() {
+                progressBar.remove();
+            }, 1500);
+            if (callback) callback();
+        }
+    }
+    
+    digitar();
 }
 function encontrarBotaoSalvar(){var botoes=d.querySelectorAll('button');for(var i=0;i<botoes.length;i++){if(/(salvar|save|enviar|publicar)/i.test(botoes[i].textContent))return botoes[i]}return d.querySelector('button[type="submit"]')}
 async function preGerarRedacao(temaManual){
