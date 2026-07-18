@@ -61,17 +61,6 @@ var st=d.createElement('style');st.textContent='input[type=range]::-webkit-slide
 c.appendChild(st);s.addEventListener('input',function(){v.textContent=this.value;if(onChange)onChange(parseInt(this.value))});
 c.appendChild(h);c.appendChild(s);return c;
 }
-var pasteForceFn=null;
-function enablePaste(){
-if(pasteForceFn)return;
-pasteForceFn=function(e){e.stopImmediatePropagation();return true};
-['paste','copy'].forEach(function(ev){d.addEventListener(ev,pasteForceFn,true)});
-}
-function disablePaste(){
-if(!pasteForceFn)return;
-['paste','copy'].forEach(function(ev){d.removeEventListener(ev,pasteForceFn,true)});
-pasteForceFn=null;
-}
 var userKey=null,userData=null;
 var aiProviders={chatgpt:'ChatGPT',gemini:'Gemini',deepseek:'DeepSeek',mistral:'Mistral'};
 var aiEndpoints={chatgpt:'https://api.openai.com/v1/chat/completions',gemini:'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=',deepseek:'https://api.deepseek.com/v1/chat/completions',mistral:'https://api.mistral.ai/v1/chat/completions'};
@@ -81,6 +70,24 @@ var essayMode='normal';
 var currentPasteEnabled=false,currentGenerateEnabled=false;
 var currentTab='tools';
 
+// ============================================
+// ENABLE PASTE CORRIGIDO
+// ============================================
+var pasteForceFn=null;
+function enablePaste(){
+    if(pasteForceFn)return;
+    pasteForceFn=function(e){e.stopImmediatePropagation();return true};
+    ['paste','copy'].forEach(function(ev){d.addEventListener(ev,pasteForceFn,true)});
+}
+function disablePaste(){
+    if(!pasteForceFn)return;
+    ['paste','copy'].forEach(function(ev){d.removeEventListener(ev,pasteForceFn,true)});
+    pasteForceFn=null;
+}
+
+// ============================================
+// LOAD TOGGLE STATES
+// ============================================
 function loadToggleStates(){
 try{
 var states=JSON.parse(localStorage.getItem('_toggle_states')||'{}');
@@ -321,6 +328,10 @@ return{titulo:titulo,texto:texto,palavras:palavras};
 }catch(e){notify('Generation error: '+e.message,'error',5000);return null}
 }
 function pararDigitacao(){typingStopped=true;if(currentTypingTimeout){clearTimeout(currentTypingTimeout);currentTypingTimeout=null}}
+
+// ============================================
+// DIGITACAO CORRIGIDA - MESMO METODO DO SEU SCRIPT
+// ============================================
 function digitarRapido(el, texto, totalPalavras, callback) {
     typingStopped = false;
     var i = 0;
@@ -332,6 +343,7 @@ function digitarRapido(el, texto, totalPalavras, callback) {
             el.readOnly = false;
             el.focus();
             el.click();
+            // Limpa o campo antes de começar
             el.value = '';
             el.dispatchEvent(new Event('input', { bubbles: true }));
         }
@@ -359,10 +371,9 @@ function digitarRapido(el, texto, totalPalavras, callback) {
             var ch = texto[i++];
             try {
                 if (isInput) {
+                    // METODO CORRETO - igual ao seu script
                     var pos = el.selectionStart || el.value.length;
-                    var val = el.value;
-                    el.value = val.substring(0, pos) + ch + val.substring(pos);
-                    el.selectionStart = el.selectionEnd = pos + 1;
+                    el.setRangeText(ch, pos, pos, 'end');
                 } else {
                     el.textContent += ch;
                 }
@@ -388,6 +399,7 @@ function digitarRapido(el, texto, totalPalavras, callback) {
     
     digitar();
 }
+
 function encontrarBotaoSalvar(){var botoes=d.querySelectorAll('button');for(var i=0;i<botoes.length;i++){if(/(salvar|save|enviar|publicar)/i.test(botoes[i].textContent))return botoes[i]}return d.querySelector('button[type="submit"]')}
 async function preGerarRedacao(temaManual){
 var tema=temaManual||(propostaData?(propostaData.proposta||propostaData).descTema:'')||essayTheme;
