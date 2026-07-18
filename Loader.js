@@ -137,7 +137,11 @@ var token=localStorage.getItem('Token');if(!token){callback(null);return}
 var url=window.location.href;var match=url.match(/\/student-write-essay\/(\d+)\/(\d+)/);
 if(!match){callback(null);return}
 var propostaId=match[1];var studentId=match[2];
-fetch('https://redacao-api.pr.gov.br/api/v2/proposta/'+propostaId+'/estudante/'+studentId,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}}).then(function(r){return r.json()}).then(function(data){propostaData=data;callback(data)}).catch(function(){callback(null)})
+fetch('https://redacao-api.pr.gov.br/api/v2/proposta/'+propostaId+'/estudante/'+studentId,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}}).then(function(r){return r.json()}).then(function(data){
+if(data&&data.proposta){propostaData=data;essayTheme=data.proposta.descTema;settings.essayTopic=data.proposta.descTema;saveSettings(settings);callback(data)}
+else if(data&&data.descTema){propostaData={proposta:data};essayTheme=data.descTema;settings.essayTopic=data.descTema;saveSettings(settings);callback(propostaData)}
+else{callback(null)}
+}).catch(function(){callback(null)})
 }
 function getSelectedAPI(){var ia=userData&&userData.IA?userData.IA:{};var keys=Object.keys(ia);if(settings.lastAPIKey&&ia[settings.lastAPIKey])return ia[settings.lastAPIKey];for(var i=0;i<keys.length;i++){if(ia[keys[i]].Status==='ok')return ia[keys[i]]}return null}
 function detectarCampoTitulo(){var inputs=d.querySelectorAll('input.MuiOutlinedInput-input, input.MuiInputBase-input');for(var i=0;i<inputs.length;i++){if(inputs[i].type==='text'&&!inputs[i].placeholder)return inputs[i]}var todos=d.querySelectorAll('input[type="text"]');for(var i=0;i<todos.length;i++){if(!todos[i].value&&!todos[i].placeholder)return todos[i]}return null}
@@ -191,9 +195,17 @@ contentArea.appendChild(createToggle('Generate Essay',settings.generateEnabled,f
 var tc=d.createElement('div');tc.style.cssText='padding:8px 0;';
 var tl=d.createElement('span');tl.style.cssText='font-size:12px;color:#888;font-family:Inter,sans-serif;display:block;margin-bottom:4px;';
 var info=propostaData?(propostaData.proposta||propostaData):null;
-if(info){tl.textContent='Tema: '+info.descTema+' ('+info.minPalvra+'-'+info.maxPalavra+' palavras)'}
-else{tl.textContent='Tema: '+(essayTheme||'Abra uma página de redação')}
-tc.appendChild(tl);contentArea.appendChild(tc);
+if(info&&info.descTema){
+tl.textContent='Tema: '+info.descTema+' ('+(info.descGenero||'Redação')+' • '+(info.minPalvra||150)+'-'+(info.maxPalavra||500)+' palavras)';
+}else{
+tl.textContent='Tema: '+(essayTheme||'Digite o tema abaixo');
+}
+tc.appendChild(tl);
+var ti=d.createElement('input');ti.type='text';ti.value=essayTheme||'';ti.placeholder='Tema da redação...';
+ti.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;transition:0.2s;box-sizing:border-box;';
+ti.addEventListener('focus',function(){ti.style.borderColor='#444'});ti.addEventListener('blur',function(){ti.style.borderColor='#1a1a1a'});
+ti.addEventListener('input',function(){essayTheme=this.value;settings.essayTopic=this.value;cachedEssay=null;saveSettings(settings);tl.textContent='Tema: '+this.value});
+tc.appendChild(ti);contentArea.appendChild(tc);
 contentArea.appendChild(createSlider('Velocidade',10,200,settings.typingSpeed,function(v){settings.typingSpeed=v;saveSettings(settings)}));
 var sl=d.createElement('div');sl.style.cssText='font-size:11px;color:#555;font-family:Inter,sans-serif;margin-top:4px;';
 sl.textContent=cachedEssay?'Redação pronta ('+cachedEssay.palavras+' palavras)':'Nenhuma redação no cache';contentArea.appendChild(sl);
