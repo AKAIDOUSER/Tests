@@ -146,7 +146,28 @@ if(token&&match){var propostaId=match[1];var studentId=match[2];fetch('https://r
 function getSelectedAPI(){var ia=userData&&userData.IA?userData.IA:{};var keys=Object.keys(ia);if(settings.lastAPIKey&&ia[settings.lastAPIKey])return ia[settings.lastAPIKey];for(var i=0;i<keys.length;i++){if(ia[keys[i]].Status==='ok')return ia[keys[i]]}return null}
 function detectarCampoTitulo(){var inputs=d.querySelectorAll('input.MuiOutlinedInput-input, input.MuiInputBase-input');for(var i=0;i<inputs.length;i++){if(inputs[i].type==='text'&&!inputs[i].placeholder)return inputs[i]}var todos=d.querySelectorAll('input[type="text"]');for(var i=0;i<todos.length;i++){if(!todos[i].value&&!todos[i].placeholder)return todos[i]}return null}
 function detectarCampoRedacao(){var textareas=d.querySelectorAll('textarea');for(var i=0;i<textareas.length;i++){var ph=(textareas[i].placeholder||'').toLowerCase();if(ph.includes('comece')||ph.includes('escreva')||ph.includes('reda'))return textareas[i]}for(var i=0;i<textareas.length;i++){if(textareas[i].offsetParent!==null)return textareas[i]}return null}
-function limparCampos(){var ct=detectarCampoTitulo();var cr=detectarCampoRedacao();if(ct){ct.value='';ct.dispatchEvent(new Event('input',{bubbles:true}))}if(cr){cr.value='';cr.dispatchEvent(new Event('input',{bubbles:true}))}}
+function limparCampos(){
+  // Campo de título
+  var ct=detectarCampoTitulo();
+  if(ct){
+    var key=Object.keys(ct).find(function(k){return k.startsWith('__reactProps')});
+    if(key){ct[key].onChange({target:{value:''}})}
+    else{ct.value='';ct.dispatchEvent(new Event('input',{bubbles:true}))}
+  }
+  // Campo de redação
+  var cr=detectarCampoRedacao();
+  if(cr){
+    var key2=Object.keys(cr).find(function(k){return k.startsWith('__reactProps')});
+    if(key2){cr[key2].onChange({target:{value:''}})}
+    else{cr.value='';cr.dispatchEvent(new Event('input',{bubbles:true}))}
+  }
+  // Botão APAGAR TUDO
+  var btn=d.querySelector('button[aria-label="APAGAR TUDO"]');
+  if(btn){
+    var key3=Object.keys(btn).find(function(k){return k.startsWith('__reactProps')});
+    if(key3){btn[key3].onClick({preventDefault:function(){},stopPropagation:function(){}})}
+  }
+}
 async function gerarComIA(tema,minPalavras,maxPalavras,genero,api){
 if(!api)api=getSelectedAPI();if(!api){notify('No API configured','error',3000);return null}
 tema=limparTema(tema);
