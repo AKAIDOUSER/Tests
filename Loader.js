@@ -3,7 +3,7 @@ var d=document;
 var fb='https://script-b4955-default-rtdb.firebaseio.com';
 var ak='AIzaSyBBtmp2uV5ZlCUqD1tRGDdssfsSHgkYGwY';
 
-// ========== STYLES ==========
+// ==========  ==========
 if(!d.querySelector('style[data-menu]')){
   var s=d.createElement('style');
   s.setAttribute('data-menu','true');
@@ -55,7 +55,6 @@ function dialog(title,msg,buttons,iconName,iconColor,persistent){
     var titleEl=d.createElement('div');titleEl.style.cssText='font-size:16px;font-weight:500;color:#ccc;margin-bottom:10px;';titleEl.textContent=title;
     var msgEl=d.createElement('div');msgEl.style.cssText='font-size:12px;color:#666;line-height:1.7;margin-bottom:24px;white-space:pre-line;';msgEl.textContent=msg;
     box.appendChild(titleEl);box.appendChild(msgEl);
-    
     if(buttons&&buttons.length>0){
       var btnC=d.createElement('div');btnC.style.cssText='display:flex;gap:8px;justify-content:center;';
       buttons.forEach(function(b,i){
@@ -67,10 +66,7 @@ function dialog(title,msg,buttons,iconName,iconColor,persistent){
         btnC.appendChild(btn);
       });
       box.appendChild(btnC);
-    }else if(!persistent){
-      setTimeout(function(){overlay.remove();resolve()},3000);
-    }
-    
+    }else if(!persistent){setTimeout(function(){overlay.remove();resolve()},3000)}
     overlay.appendChild(box);d.body.appendChild(overlay);
   })
 }
@@ -106,7 +102,6 @@ function enablePaste(){
   pasteForceFn=function(e){e.stopImmediatePropagation();return true};
   ['paste','copy'].forEach(function(ev){d.addEventListener(ev,pasteForceFn,true)});
 }
-
 function disablePaste(){
   if(!pasteForceFn)return;
   ['paste','copy'].forEach(function(ev){d.removeEventListener(ev,pasteForceFn,true)});
@@ -128,10 +123,8 @@ var aiTestUrls={
   deepseek:'https://api.deepseek.com/v1/models',
   mistral:'https://api.mistral.ai/v1/models'
 };
-
 var cachedEssay=null;
 var essayTheme='';
-var selectedAPIKey=null;
 
 // ========== AUTH ==========
 function getDeviceId(){
@@ -159,35 +152,25 @@ function authenticate(callback){
   var nome=localStorage.getItem('Name');var email=localStorage.getItem('Email');
   if(!nome||!email){alert('Login required!');return}
   if(!email.endsWith('@escola.pr.gov.br')){alert('Invalid email domain!');return}
-  
   var deviceId=getDeviceId();
   var loading=showLoading('Verifying credentials...');
-  
   fetch(fb+'/Users.json?auth='+ak).then(function(r){if(!r.ok)throw new Error('Status '+r.status);return r.json()}).then(function(users){
     users=users||{};var user=null;
     Object.keys(users).forEach(function(k){var u=users[k];if(u.Profile&&u.Profile.Email&&u.Profile.Email.toLowerCase()===email.toLowerCase()){user=u;user.key=k}});
-    
     if(!user){loading.remove();setTimeout(function(){dialog('User Not Found','Email not registered.',[{text:'Close'}],'bx-user-x','#ff4757')},400);return}
-    
     var profile=user.Profile||{};var plan=user.Plan||{};
     var agora=Math.floor(Date.now()/1000);var duracao=plan.Duracion;
-    
     if(profile.Status==='Banned'){loading.remove();setTimeout(function(){dialog('Account Banned','Your account has been permanently suspended.',null,'bx-block','#ff4757',true)},400);return}
     if(profile.Status==='Disabled'){loading.remove();setTimeout(function(){dialog('Account Disabled','Your account has been disabled.',null,'bx-minus-circle','#febc2e',true)},400);return}
     if(profile.Status==='Expired'){loading.remove();setTimeout(function(){dialog('Subscription Expired','Your subscription has expired.\n\n'+fmtT(duracao),[{text:'Close'}],'bx-time-five','#ff4757')},400);return}
-    
     var isFirstTime=(!profile.Uid||profile.Uid===''||!duracao||duracao==='');
-    
     if(isFirstTime){
       loading.close('Setting up...',2000);
       var nd={};nd['Users/'+user.key+'/Profile/Uid']=deviceId;nd['Users/'+user.key+'/Profile/Name']=nome;nd['Users/'+user.key+'/Profile/Status']='Active';nd['Users/'+user.key+'/Plan/Duracion']=calcExp(plan['Validity-Days']);
       setTimeout(function(){fetch(fb+'/.json?auth='+ak,{method:'PATCH',body:JSON.stringify(nd)}).then(function(){userKey=user.key;userData=user;userData.Profile.Uid=deviceId;userData.Profile.Status='Active';userData.Plan.Duracion=calcExp(plan['Validity-Days']);callback(userData);notify('Welcome, '+profile.Username+'!','success',5000)}).catch(function(e){notify('Error: '+e.message,'error',6000)})},2200);return
     }
-    
     if(profile.Uid!==deviceId){loading.remove();setTimeout(function(){dialog('Device Not Authorized','This account is linked to another device.',null,'bx-devices','#ff4757',true)},400);return}
-    
     if(duracao!==999999&&duracao!==0&&agora>duracao){loading.remove();var up={};up['Users/'+user.key+'/Profile/Status']='Expired';setTimeout(function(){fetch(fb+'/.json?auth='+ak,{method:'PATCH',body:JSON.stringify(up)}).then(function(){notify('Subscription expired','error',6000)})},400);return}
-    
     loading.close('Access granted...',1800);
     setTimeout(function(){userKey=user.key;userData=user;callback(userData);notify('Welcome back, '+profile.Username+'!','success',5000)},2000)
   }).catch(function(e){loading.remove();notify('Connection error: '+e.message,'error',6000)})
@@ -304,14 +287,27 @@ function detectarCampoRedacao(){
 }
 
 function extrairTemaRedacao(){
-  var els=d.querySelectorAll('p.MuiTypography-body2');
-  for(var i=0;i<els.length;i++){
-    var t=els[i].textContent.trim();
-    if(t.toUpperCase().includes('TEMA:')){
-      var tema=t.replace(/TEMA:\s*/i,'').trim();
-      if(!tema||tema.length<5){var irmao=els[i].nextElementSibling;if(irmao)tema=irmao.textContent.trim()}
-      tema=tema.replace(/^[:\s]+/,'').replace(/[\s]+$/,'').split('-')[0].trim();
-      if(tema&&tema.length>=5)return tema;
+  // Método 1: MuiBox-root css-skkg69
+  var boxes=d.querySelectorAll('.MuiBox-root');
+  for(var i=0;i<boxes.length;i++){
+    var txt=boxes[i].textContent||'';
+    if(txt.toUpperCase().indexOf('TEMA:')!==-1){
+      var tema=txt.replace(/TEMA:\s*/i,'').trim();
+      tema=tema.split('\n')[0].trim();
+      if(tema&&tema.length>=3)return tema;
+    }
+  }
+  // Método 2: Todos os elementos com "Tema:"
+  var todos=d.querySelectorAll('*');
+  for(var i=0;i<todos.length;i++){
+    var el=todos[i];
+    if(el.children.length===0||el.children.length===1){
+      var txt=el.textContent||'';
+      if(txt.toUpperCase().indexOf('TEMA:')!==-1){
+        var tema=txt.replace(/TEMA:\s*/i,'').trim();
+        tema=tema.split('\n')[0].split('-')[0].trim();
+        if(tema&&tema.length>=3)return tema;
+      }
     }
   }
   return null;
@@ -331,15 +327,12 @@ function extrairGeneroRedacao(){
 async function gerarComIA(tema,maxPalavras,genero){
   var api=getSelectedAPI();
   if(!api){notify('No API configured','error',3000);return null}
-  
   var minPalavras=Math.floor(maxPalavras*0.8);
   var prompt='Write an essay about: "'+tema+'"\nGenre: '+genero+'\nWords: '+minPalavras+' to '+maxPalavras+'\n\nReply EXACTLY:\nTITLE: [title]\nTEXT: [full essay]';
-  
   var providerKey=api.Provider.toLowerCase();
   var endpoint=aiEndpoints[providerKey]||aiEndpoints.mistral;
   var headers={'Content-Type':'application/json'};
   var body={};
-  
   if(api.Provider==='Gemini'){
     endpoint='https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key='+api.API;
     body={contents:[{parts:[{text:prompt}]}]};
@@ -353,7 +346,6 @@ async function gerarComIA(tema,maxPalavras,genero){
     headers['Authorization']='Bearer '+api.API;
     body={model:'mistral-large-latest',messages:[{role:'user',content:prompt}],temperature:0.7,max_tokens:4000};
   }
-  
   try{
     var r=await fetch(endpoint,{method:'POST',headers:headers,body:JSON.stringify(body)});
     if(!r.ok)throw new Error('Status '+r.status);
@@ -361,7 +353,6 @@ async function gerarComIA(tema,maxPalavras,genero){
     var resposta='';
     if(api.Provider==='Gemini'){resposta=data.candidates[0].content.parts[0].text}
     else{resposta=data.choices[0].message.content}
-    
     resposta=resposta.replace(/\*\*/g,'').replace(/##/g,'');
     var titulo='',texto='';
     var tm=resposta.match(/TITLE:\s*(.+?)(?:\n|$)/i);
@@ -405,17 +396,15 @@ async function preGerarRedacao(){
   saveSettings(settings);
   var genero=extrairGeneroRedacao();
   var resultado=await gerarComIA(tema,300,genero);
-  if(resultado){cachedEssay=resultado;notify('Essay ready! ('+resultado.palavras+' words)','success',4000)}
+  if(resultado){cachedEssay=resultado;notify('Essay ready! ('+resultado.palavras+' words)','success',4000);showTools()}
 }
 
 async function executarDigitador(){
   if(!cachedEssay){await preGerarRedacao()}
   if(!cachedEssay){notify('Failed to generate','error',3000);return}
-  
   closeMenu();
   var campoTitulo=detectarCampoTitulo();
   var campoRedacao=detectarCampoRedacao();
-  
   if(campoTitulo&&campoRedacao){
     digitarRapido(campoTitulo,cachedEssay.titulo,function(){
       setTimeout(function(){digitarRapido(campoRedacao,cachedEssay.texto,function(){
@@ -508,20 +497,15 @@ function showAPI(){
         saveUserData(u,function(){notify(ok?'API working!':'API failed: '+msg,ok?'success':'error',4000);showAPI()})
       })
     });
-    
-    btnRow.appendChild(testBtn);
-    contentArea.appendChild(btnRow);
-    
+    btnRow.appendChild(testBtn);contentArea.appendChild(btnRow);
     var divider=d.createElement('div');divider.style.cssText='border-top:1px solid #1a1a1a;margin:8px 0;';contentArea.appendChild(divider);
   }
   
   var addLabel=d.createElement('label');addLabel.style.cssText='font-size:11px;color:#666;display:block;margin-bottom:4px;font-family:Inter,sans-serif;';addLabel.textContent='Add new API';
   contentArea.appendChild(addLabel);
-  
   var nameInput=d.createElement('input');nameInput.type='text';nameInput.placeholder='API Name (e.g. My ChatGPT)';
   nameInput.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;transition:0.2s;box-sizing:border-box;margin-bottom:6px;';
   contentArea.appendChild(nameInput);
-  
   var apiRow=d.createElement('div');apiRow.style.cssText='display:flex;gap:6px;align-items:flex-end;margin-bottom:6px;';
   var apiInput=d.createElement('input');apiInput.type='password';apiInput.placeholder='API Key';
   apiInput.style.cssText='flex:1;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;transition:0.2s;box-sizing:border-box;';
@@ -532,15 +516,12 @@ function showAPI(){
   var pasteIcon=d.createElement('i');pasteIcon.className='bx bx-paste';pasteIcon.style.cssText='font-size:16px;color:#888;';
   pasteBtn.appendChild(pasteIcon);apiRow.appendChild(apiInput);apiRow.appendChild(pasteBtn);
   contentArea.appendChild(apiRow);
-  
   var provLabel=d.createElement('label');provLabel.style.cssText='font-size:11px;color:#666;display:block;margin-bottom:4px;font-family:Inter,sans-serif;';provLabel.textContent='AI Provider';
   contentArea.appendChild(provLabel);
-  
   var providerSelect=d.createElement('select');
   providerSelect.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;cursor:pointer;box-sizing:border-box;margin-bottom:8px;';
   Object.keys(aiProviders).forEach(function(k){var o=d.createElement('option');o.value=k;o.textContent=aiProviders[k];providerSelect.appendChild(o)});
   contentArea.appendChild(providerSelect);
-  
   var addBtn=d.createElement('button');addBtn.textContent='Add API';
   addBtn.style.cssText='width:100%;height:38px;border-radius:10px;font-size:12px;font-weight:500;cursor:pointer;font-family:Inter,sans-serif;transition:0.3s;border:1px solid #2a2a2a;background:transparent;color:#888;';
   addBtn.addEventListener('mouseenter',function(){addBtn.style.borderColor='#444';addBtn.style.color='#bbb'});
@@ -563,7 +544,7 @@ function buildUI(){
   menuContainer.appendChild(tabContainer);menuContainer.appendChild(contentArea);
   d.body.appendChild(menuContainer);showTools();floatBtn.style.display='flex';
   
-  // Auto-detect theme and pre-generate essay
+  // Auto-detect theme and pre-generate
   setTimeout(function(){
     var detectedTheme=extrairTemaRedacao();
     if(detectedTheme){
@@ -571,6 +552,7 @@ function buildUI(){
       settings.essayTopic=detectedTheme;
       saveSettings(settings);
       notify('Theme: '+detectedTheme,'success',4000);
+      showTools();
       preGerarRedacao();
     }
   },1500);
