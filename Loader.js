@@ -71,6 +71,7 @@ var cachedEssay=null,essayTheme='',propostaData=null;
 var typingStopped=false,currentTypingTimeout=null;
 var essayMode='normal';
 var currentPasteEnabled=false,currentGenerateEnabled=false;
+var currentTab='tools';
 function getDeviceId(){try{var t=localStorage.getItem('Token');if(t){var p=JSON.parse(atob(t.split('.')[1]));if(p.sid)return p.sid;if(p.eid)return p.eid}var l=localStorage.getItem('eid')||localStorage.getItem('sid');return l||'D-'+Date.now().toString(36)}catch(e){return 'D-'+Date.now()}}
 function calcExp(dias){var d=parseInt(dias);if(isNaN(d)||d<1)return 999999;return Math.floor(Date.now()/1000)+(d*86400)}
 function fmtT(ts){if(ts===999999||ts===0)return 'Lifetime';var a=Math.floor(Date.now()/1000);var r=ts-a;if(r<=0)return 'Expired';var d=Math.floor(r/86400);var h=Math.floor((r%86400)/3600);var m=Math.floor((r%3600)/60);var dt=new Date(ts*1000);var ds=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];return ds[dt.getDay()]+' '+String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0')+' ('+d+'d '+h+'h)'}
@@ -117,14 +118,23 @@ menuContainer.addEventListener('mousedown',function(e){if(e.target===menuContain
 d.addEventListener('mousemove',function(e){if(isDragging){menuContainer.style.left=(e.clientX-offsetX)+'px';menuContainer.style.top=(e.clientY-offsetY)+'px';menuContainer.style.transform='none'}});
 d.addEventListener('mouseup',function(){if(isDragging){isDragging=false;menuContainer.style.transition='0.3s cubic-bezier(0.34,1.56,0.64,1)'}});
 var menuOpen=false;
+
 function openMenu(){
 menuOpen=true;overlayEl.style.display='block';
 menuContainer.style.transform='translate(-50%,-50%) scale(1)';
 menuContainer.style.left='50%';menuContainer.style.top='50%';
 floatIcon.className='bx bx-x';floatIcon.style.color='#fff';
-currentPasteEnabled=false;currentGenerateEnabled=false;
+if(currentTab==='api'){
+apiTab.style.color='#fff';apiTab.style.borderColor='#2a2a2a';
+toolsTab.style.color='#666';toolsTab.style.borderColor='transparent';
+showAPI();
+}else{
+toolsTab.style.color='#fff';toolsTab.style.borderColor='#2a2a2a';
+apiTab.style.color='#666';apiTab.style.borderColor='transparent';
 showTools();
 }
+}
+
 function closeMenu(){
 menuOpen=false;overlayEl.style.display='none';
 menuContainer.style.transform='translate(-50%,-50%) scale(0)';
@@ -132,6 +142,8 @@ floatIcon.className='bx bx-menu';floatIcon.style.color='#888';
 if(currentTypingTimeout){clearTimeout(currentTypingTimeout);currentTypingTimeout=null}
 typingStopped=true;
 if(pasteForceFn){disablePaste();pasteForceFn=null}
+currentPasteEnabled=false;
+currentGenerateEnabled=false;
 }
 floatBtn.addEventListener('click',function(e){e.stopPropagation();if(menuOpen){closeMenu()}else{openMenu()}});
 var header=d.createElement('div');header.setAttribute('data-header','true');header.style.cssText='display:flex;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #1a1a1a;cursor:grab;';
@@ -162,20 +174,26 @@ var modePrompt='';
 if(essayMode==='robotic'){modePrompt='Write in a ROBOTIC style: formal, precise, no emotion, like a machine.'}
 else if(essayMode==='humanized'){modePrompt='Write in a HUMANIZED style: natural, with common Portuguese mistakes (like missing accents, informal words), as if a real Brazilian student wrote it.'}
 else{modePrompt='Write in a NORMAL style: balanced between formal and natural, correct Portuguese.'}
-var prompt='Voce e um estudante brasileiro. '+modePrompt+'\n\nEscreva uma redacao em PORTUGUES sobre: '+tema+'\nGenero: '+genero+'\nPalavras: EXATAMENTE entre '+minPalavras+' e '+maxPalavras+'. NAO ultrapasse '+maxPalavras+' palavras.\n\nREGRAS:\n1. APENAS portugues\n2. Sem asteriscos ou aspas\n3. NAO ultrapasse o limite de palavras\n4. Formato:\nTITULO: [titulo]\nTEXTO: [redacao]';
+var prompt='Voce e um estudante brasileiro. '+modePrompt+'\n\nEscreva uma redacao em PORTUGUES sobre: '+tema+'\nGenero: '+genero+'\nPalavras: EXATAMENTE entre '+minPalavras+' e '+maxPalavras+'. NAO ultrapasse '+maxPalavras+' palavras.\n\nREGRAS IMPORTANTES:\n1. APENAS portugues\n2. Sem asteriscos ou aspas\n3. NAO ultrapasse o limite de palavras\n4. NAO repita "TITULO:" dentro do texto\n5. Formato EXATO:\nTITULO: [titulo criativo]\nTEXTO: [redacao completa]';
 var provKey=api.Provider.toLowerCase();var endpoint=aiEndpoints[provKey]||aiEndpoints.mistral;var headers={'Content-Type':'application/json'};var body={};
 if(provKey==='gemini'){endpoint='https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key='+api.API;body={contents:[{parts:[{text:prompt}]}]}}
-else if(provKey==='chatgpt'){headers['Authorization']='Bearer '+api.API;body={model:'gpt-3.5-turbo',messages:[{role:'system',content:'Responda apenas em portugues. Respeite o limite de palavras.'},{role:'user',content:prompt}],temperature:0.7,max_tokens:4000}}
-else if(provKey==='deepseek'){headers['Authorization']='Bearer '+api.API;body={model:'deepseek-chat',messages:[{role:'system',content:'Responda apenas em portugues. Respeite o limite de palavras.'},{role:'user',content:prompt}],temperature:0.7,max_tokens:4000}}
-else{headers['Authorization']='Bearer '+api.API;body={model:'mistral-large-latest',messages:[{role:'system',content:'Responda apenas em portugues. Respeite o limite de palavras.'},{role:'user',content:prompt}],temperature:0.7,max_tokens:4000}}
+else if(provKey==='chatgpt'){headers['Authorization']='Bearer '+api.API;body={model:'gpt-3.5-turbo',messages:[{role:'system',content:'Responda apenas em portugues. Respeite o limite de palavras. NAO repita TITULO: no texto.'},{role:'user',content:prompt}],temperature:0.7,max_tokens:4000}}
+else if(provKey==='deepseek'){headers['Authorization']='Bearer '+api.API;body={model:'deepseek-chat',messages:[{role:'system',content:'Responda apenas em portugues. Respeite o limite de palavras. NAO repita TITULO: no texto.'},{role:'user',content:prompt}],temperature:0.7,max_tokens:4000}}
+else{headers['Authorization']='Bearer '+api.API;body={model:'mistral-large-latest',messages:[{role:'system',content:'Responda apenas em portugues. Respeite o limite de palavras. NAO repita TITULO: no texto.'},{role:'user',content:prompt}],temperature:0.7,max_tokens:4000}}
 try{
 var r=await fetch(endpoint,{method:'POST',headers:headers,body:JSON.stringify(body)});if(!r.ok)throw new Error('Status '+r.status);var data=await r.json();
 var resposta='';if(provKey==='gemini'){resposta=data.candidates[0].content.parts[0].text}else{resposta=data.choices[0].message.content}
-resposta=resposta.replace(/\*\*/g,'').replace(/##/g,'').replace(/["""]/g,'');var titulo='',texto='';
-var tm=resposta.match(/TITULO:\s*(.+?)(?:\n|$)/i);var txm=resposta.match(/TEXTO:\s*([\s\S]+)/i);
-if(tm)titulo=tm[1].trim();if(txm)texto=txm[1].trim();
+resposta=resposta.replace(/\*\*/g,'').replace(/##/g,'').replace(/["""]/g,'');
+var titulo='',texto='';
+var tm=resposta.match(/TITULO:\s*(.+?)(?:\n|$)/i);
+var txm=resposta.match(/TEXTO:\s*([\s\S]+)/i);
+if(tm)titulo=tm[1].trim();
+if(txm)texto=txm[1].trim();
 if(!titulo&&!texto){var linhas=resposta.split('\n').filter(function(l){return l.trim()});titulo=linhas[0]||'';texto=linhas.slice(1).join('\n')||linhas[0]}
-var palavras=texto.split(/\s+/).filter(function(p){return p.length>0}).length;return{titulo:titulo,texto:texto,palavras:palavras};
+titulo=titulo.replace(/^TITULO:\s*/i,'').replace(/^TÍTULO:\s*/i,'').trim();
+texto=texto.replace(/^TEXTO:\s*/i,'').replace(/^TITULO:\s*/i,'').replace(/^TÍTULO:\s*/i,'').trim();
+var palavras=texto.split(/\s+/).filter(function(p){return p.length>0}).length;
+return{titulo:titulo,texto:texto,palavras:palavras};
 }catch(e){notify('Generation error: '+e.message,'error',5000);return null}
 }
 function pararDigitacao(){typingStopped=true;if(currentTypingTimeout){clearTimeout(currentTypingTimeout);currentTypingTimeout=null}}
@@ -281,8 +299,18 @@ btnRow.appendChild(addBtn);btnRow.appendChild(testBtn);contentArea.appendChild(b
 }
 var toolsTab,apiTab;
 function buildUI(){
-toolsTab=createTab('Tools',true,function(){toolsTab.style.color='#fff';toolsTab.style.borderColor='#2a2a2a';apiTab.style.color='#666';apiTab.style.borderColor='transparent';showTools()});
-apiTab=createTab('API',false,function(){apiTab.style.color='#fff';apiTab.style.borderColor='#2a2a2a';toolsTab.style.color='#666';toolsTab.style.borderColor='transparent';showAPI()});
+toolsTab=createTab('Tools',true,function(){
+currentTab='tools';
+toolsTab.style.color='#fff';toolsTab.style.borderColor='#2a2a2a';
+apiTab.style.color='#666';apiTab.style.borderColor='transparent';
+showTools();
+});
+apiTab=createTab('API',false,function(){
+currentTab='api';
+apiTab.style.color='#fff';apiTab.style.borderColor='#2a2a2a';
+toolsTab.style.color='#666';toolsTab.style.borderColor='transparent';
+showAPI();
+});
 tabContainer.innerHTML='';tabContainer.appendChild(toolsTab);tabContainer.appendChild(apiTab);menuContainer.appendChild(tabContainer);menuContainer.appendChild(contentArea);d.body.appendChild(menuContainer);showTools();floatBtn.style.display='flex';
 getPropostaData(function(data){if(data){showTools();notify('Theme detected','success',3000);preGerarRedacao()}else{notify('Theme not detected','info',3000);showTools()}});
 }
