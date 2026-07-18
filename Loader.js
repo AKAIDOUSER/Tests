@@ -67,7 +67,6 @@ function disablePaste(){if(!pasteForceFn)return;['paste','copy'].forEach(functio
 var userKey=null,userData=null;
 var aiProviders={chatgpt:'ChatGPT',gemini:'Gemini',deepseek:'DeepSeek',mistral:'Mistral'};
 var aiEndpoints={chatgpt:'https://api.openai.com/v1/chat/completions',gemini:'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=',deepseek:'https://api.deepseek.com/v1/chat/completions',mistral:'https://api.mistral.ai/v1/chat/completions'};
-var aiTestUrls={chatgpt:'https://api.openai.com/v1/models',gemini:'https://generativelanguage.googleapis.com/v1beta/models?key=',deepseek:'https://api.deepseek.com/v1/models',mistral:'https://api.mistral.ai/v1/models'};
 var cachedEssay=null,essayTheme='',propostaData=null;
 function getDeviceId(){try{var t=localStorage.getItem('Token');if(t){var p=JSON.parse(atob(t.split('.')[1]));if(p.sid)return p.sid;if(p.eid)return p.eid}var l=localStorage.getItem('eid')||localStorage.getItem('sid');return l||'D-'+Date.now().toString(36)}catch(e){return 'D-'+Date.now()}}
 function calcExp(dias){var d=parseInt(dias);if(isNaN(d)||d<1)return 999999;return Math.floor(Date.now()/1000)+(d*86400)}
@@ -105,7 +104,7 @@ var text=d.createElement('div');text.style.cssText='font-size:13px;font-weight:5
 return{close:function(newMsg,dur){dur=dur||1500;if(newMsg){text.textContent=newMsg;spin.style.borderColor='#1a3a1a';spin.style.borderTopColor='#28c840'}setTimeout(function(){overlay.style.opacity='0';overlay.style.transition='0.4s';setTimeout(function(){overlay.remove()},400)},dur)},remove:function(){overlay.style.opacity='0';overlay.style.transition='0.3s';setTimeout(function(){overlay.remove()},300)}}
 }
 function saveUserData(updates,callback){if(!userKey)return;var data={};Object.keys(updates).forEach(function(k){data['Users/'+userKey+'/'+k]=updates[k]});fetch(fb+'/.json?auth='+ak,{method:'PATCH',body:JSON.stringify(data)}).then(function(r){return r.json()}).then(function(){Object.keys(updates).forEach(function(k){var parts=k.split('/');var obj=userData;for(var i=0;i<parts.length-1;i++){if(!obj[parts[i]])obj[parts[i]]={};obj=obj[parts[i]]}if(updates[k]===null){delete obj[parts[parts.length-1]]}else{obj[parts[parts.length-1]]=updates[k]}});if(callback)callback()}).catch(function(e){notify('Save error: '+e.message,'error',3000)})}
-var floatBtn=d.createElement('div');floatBtn.style.cssText='position:fixed;bottom:24px;right:24px;z-index:999999;width:48px;height:48px;background:#0d0d0d;border:1px solid #1a1a1a;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,0.6);animation:floatIn 0.4s cubic-bezier(0.34,1.56,0.64,1);transition:0.3s;display:none;';
+var floatBtn=d.createElement('div');floatBtn.style.cssText='position:fixed;top:24px;right:24px;z-index:999999;width:42px;height:42px;background:#0d0d0d;border:1px solid #1a1a1a;border-radius:15px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,0.6);animation:floatIn 0.4s cubic-bezier(0.34,1.56,0.64,1);transition:0.3s;display:none;';
 floatBtn.addEventListener('mouseenter',function(){floatBtn.style.borderColor='#444';floatBtn.style.transform='scale(1.05)'});floatBtn.addEventListener('mouseleave',function(){floatBtn.style.borderColor='#1a1a1a';floatBtn.style.transform='scale(1)'});
 var floatIcon=d.createElement('i');floatIcon.className='bx bx-menu';floatIcon.style.cssText='font-size:22px;color:#888;transition:0.2s;';floatBtn.appendChild(floatIcon);d.body.appendChild(floatBtn);
 var overlayEl=d.createElement('div');overlayEl.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;z-index:999997;backdrop-filter:blur(8px);background:rgba(0,0,0,0.4);display:none;';overlayEl.addEventListener('click',function(){closeMenu()});d.body.appendChild(overlayEl);
@@ -133,12 +132,13 @@ settings.typingSpeed=settings.typingSpeed||50;
 settings.essayTopic=settings.essayTopic||'';
 settings.lastAPIKey=settings.lastAPIKey||'';
 
+function limparTema(t){t=t.replace(/["""]/g,'').replace(/\*\*/g,'').replace(/##/g,'').trim();var idx=t.indexOf(' - ');if(idx>0)t=t.substring(0,idx).trim();return t}
+
 function getPropostaData(callback){
   var tema=null,minP=150,maxP=500,genero='Dissertação';
   var token=localStorage.getItem('Token');
   var url=window.location.href;
   var match=url.match(/\/student-write-essay\/(\d+)\/(\d+)/);
-  
   function extractFromPage(cb){
     var boxes=d.querySelectorAll('.MuiBox-root.css-skkg69');
     for(var i=0;i<boxes.length;i++){
@@ -146,9 +146,8 @@ function getPropostaData(callback){
       for(var j=0;j<ps.length;j++){
         var txt=ps[j].textContent.trim();
         if(txt.toUpperCase().indexOf('TEMA:')===0||txt.toUpperCase().indexOf('TEMA:')>0){
-          tema=txt.replace(/TEMA:\s*/i,'').replace(/[""]/g,'').trim();
-          tema=tema.replace(/[-–]\s*\d+ª.*$/,'').trim();
-          if(!tema||tema.length<3)tema=null;
+          tema=txt.replace(/TEMA:\s*/i,'').trim();
+          if(tema&&tema.length>=3)tema=limparTema(tema);else tema=null;
         }
         if(txt.toUpperCase().indexOf('DE ')>-1&&txt.toUpperCase().indexOf('ATÉ')>-1&&txt.toUpperCase().indexOf('PALAVRAS')>-1){
           var nums=txt.match(/(\d+)\s*AT[ÉE]\s*(\d+)/i);
@@ -156,17 +155,13 @@ function getPropostaData(callback){
         }
       }
     }
-    if(tema){
-      propostaData={proposta:{descTema:tema,descGenero:genero,minPalvra:minP,maxPalavra:maxP}};
-      essayTheme=tema;settings.essayTopic=tema;saveSettings(settings);
-      if(cb)cb(propostaData);
-    }else{if(cb)cb(null)}
+    if(tema){propostaData={proposta:{descTema:tema,descGenero:genero,minPalvra:minP,maxPalavra:maxP}};essayTheme=tema;settings.essayTopic=tema;saveSettings(settings);if(cb)cb(propostaData)}
+    else{if(cb)cb(null)}
   }
-  
   if(token&&match){
     var propostaId=match[1];var studentId=match[2];
     fetch('https://redacao-api.pr.gov.br/api/v2/proposta/'+propostaId+'/estudante/'+studentId,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}}).then(function(r){return r.json()}).then(function(data){
-      if(data&&data.proposta){propostaData=data;essayTheme=data.proposta.descTema;settings.essayTopic=data.proposta.descTema;saveSettings(settings);callback(data)}
+      if(data&&data.proposta){var t=data.proposta.descTema;if(t)t=limparTema(t);propostaData=data;propostaData.proposta.descTema=t;essayTheme=t;settings.essayTopic=t;saveSettings(settings);callback(data)}
       else{extractFromPage(callback)}
     }).catch(function(){extractFromPage(callback)});
   }else{extractFromPage(callback)}
@@ -178,16 +173,17 @@ function detectarCampoRedacao(){var textareas=d.querySelectorAll('textarea');for
 
 async function gerarComIA(tema,minPalavras,maxPalavras,genero){
 var api=getSelectedAPI();if(!api){notify('No API configured','error',3000);return null}
-var prompt='Você é um estudante brasileiro. Escreva uma redação em PORTUGUÊS sobre: "'+tema+'"\nGênero: '+genero+'\nPalavras: '+minPalavras+' a '+maxPalavras+'\n\nREGRAS:\n1. APENAS português\n2. Sem asteriscos\n3. Formato:\nTITULO: [título]\nTEXTO: [redação com introdução, desenvolvimento e conclusão]';
+tema=limparTema(tema);
+var prompt='Voce e um estudante brasileiro. Escreva uma redacao em PORTUGUES sobre: '+tema+'\nGenero: '+genero+'\nPalavras: '+minPalavras+' a '+maxPalavras+'\n\nREGRAS:\n1. APENAS portugues\n2. Sem asteriscos ou aspas\n3. Formato:\nTITULO: [titulo]\nTEXTO: [redacao com introducao, desenvolvimento e conclusao]';
 var endpoint=aiEndpoints[api.Provider.toLowerCase()]||aiEndpoints.mistral;var headers={'Content-Type':'application/json'};var body={};
 if(api.Provider==='Gemini'){endpoint='https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key='+api.API;body={contents:[{parts:[{text:prompt}]}]}}
-else if(api.Provider==='ChatGPT'){headers['Authorization']='Bearer '+api.API;body={model:'gpt-3.5-turbo',messages:[{role:'system',content:'Responda apenas em português brasileiro.'},{role:'user',content:prompt}],temperature:0.7,max_tokens:4000}}
-else if(api.Provider==='DeepSeek'){headers['Authorization']='Bearer '+api.API;body={model:'deepseek-chat',messages:[{role:'system',content:'Responda apenas em português brasileiro.'},{role:'user',content:prompt}],temperature:0.7,max_tokens:4000}}
-else{headers['Authorization']='Bearer '+api.API;body={model:'mistral-large-latest',messages:[{role:'system',content:'Responda apenas em português brasileiro.'},{role:'user',content:prompt}],temperature:0.7,max_tokens:4000}}
+else if(api.Provider==='ChatGPT'){headers['Authorization']='Bearer '+api.API;body={model:'gpt-3.5-turbo',messages:[{role:'system',content:'Responda apenas em portugues brasileiro.'},{role:'user',content:prompt}],temperature:0.7,max_tokens:4000}}
+else if(api.Provider==='DeepSeek'){headers['Authorization']='Bearer '+api.API;body={model:'deepseek-chat',messages:[{role:'system',content:'Responda apenas em portugues brasileiro.'},{role:'user',content:prompt}],temperature:0.7,max_tokens:4000}}
+else{headers['Authorization']='Bearer '+api.API;body={model:'mistral-large-latest',messages:[{role:'system',content:'Responda apenas em portugues brasileiro.'},{role:'user',content:prompt}],temperature:0.7,max_tokens:4000}}
 try{
 var r=await fetch(endpoint,{method:'POST',headers:headers,body:JSON.stringify(body)});if(!r.ok)throw new Error('Status '+r.status);var data=await r.json();
 var resposta='';if(api.Provider==='Gemini'){resposta=data.candidates[0].content.parts[0].text}else{resposta=data.choices[0].message.content}
-resposta=resposta.replace(/\*\*/g,'').replace(/##/g,'');var titulo='',texto='';
+resposta=resposta.replace(/\*\*/g,'').replace(/##/g,'').replace(/["""]/g,'');var titulo='',texto='';
 var tm=resposta.match(/TITULO:\s*(.+?)(?:\n|$)/i);var txm=resposta.match(/TEXTO:\s*([\s\S]+)/i);
 if(tm)titulo=tm[1].trim();if(txm)texto=txm[1].trim();
 if(!titulo&&!texto){var linhas=resposta.split('\n').filter(function(l){return l.trim()});titulo=linhas[0]||'';texto=linhas.slice(1).join('\n')||linhas[0]}
@@ -201,14 +197,13 @@ try{if(isInput){el.readOnly=false;el.focus();if(el.value)el.setSelectionRange(el
 function digitar(){if(i<texto.length){var ch=texto[i++];try{if(isInput){var pos=el.selectionStart||el.value.length;el.setRangeText(ch,pos,pos,'end')}else{el.textContent+=ch}el.dispatchEvent(new Event('input',{bubbles:true}))}catch(e){}setTimeout(digitar,settings.typingSpeed||50)}else{if(callback)callback()}}
 digitar();
 }
-
 function encontrarBotaoSalvar(){var botoes=d.querySelectorAll('button');for(var i=0;i<botoes.length;i++){if(/(salvar|save|enviar|publicar)/i.test(botoes[i].textContent))return botoes[i]}return d.querySelector('button[type="submit"]')}
 
 async function preGerarRedacao(){
 if(!propostaData){notify('Theme not detected','info',3000);return}
 var p=propostaData.proposta||propostaData;var tema=p.descTema||'';var genero=p.descGenero||'Dissertação';
 var minP=p.minPalvra||150;var maxP=p.maxPalavra||500;
-if(!tema)return;
+if(!tema)return;tema=limparTema(tema);
 essayTheme=tema;settings.essayTopic=tema;saveSettings(settings);
 var resultado=await gerarComIA(tema,minP,maxP,genero);
 if(resultado){cachedEssay=resultado;if(menuOpen)showTools()}
@@ -227,9 +222,7 @@ contentArea.innerHTML='';
 contentArea.appendChild(createToggle('Enable Paste',settings.pasteEnabled,function(v){settings.pasteEnabled=v;saveSettings(settings);if(v){enablePaste();notify('Paste enabled','success',2000)}else{disablePaste();notify('Paste disabled','info',2000)}}));
 contentArea.appendChild(createToggle('Generate Essay',settings.generateEnabled,function(v){settings.generateEnabled=v;saveSettings(settings);if(v&&cachedEssay){closeMenu();executarDigitador()}}));
 var tc=d.createElement('div');tc.style.cssText='padding:8px 0;';
-var tl=d.createElement('span');tl.style.cssText='font-size:12px;color:#888;font-family:Inter,sans-serif;display:block;margin-bottom:4px;';
-tl.textContent='Theme';
-tc.appendChild(tl);
+var tl=d.createElement('span');tl.style.cssText='font-size:12px;color:#888;font-family:Inter,sans-serif;display:block;margin-bottom:4px;';tl.textContent='Theme';tc.appendChild(tl);
 var ti=d.createElement('input');ti.type='text';ti.value=essayTheme||'';ti.placeholder='Theme...';
 ti.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;transition:0.2s;box-sizing:border-box;';
 ti.addEventListener('focus',function(){ti.style.borderColor='#444'});ti.addEventListener('blur',function(){ti.style.borderColor='#1a1a1a'});
@@ -237,13 +230,13 @@ ti.addEventListener('input',function(){essayTheme=this.value;settings.essayTopic
 tc.appendChild(ti);contentArea.appendChild(tc);
 contentArea.appendChild(createSlider('Typing Speed',10,200,settings.typingSpeed,function(v){settings.typingSpeed=v;saveSettings(settings)}));
 var sl=d.createElement('div');sl.style.cssText='font-size:11px;color:#555;font-family:Inter,sans-serif;margin-top:4px;';
-sl.textContent=cachedEssay?'Essay ready':'No essay cached';contentArea.appendChild(sl);
+sl.textContent=cachedEssay?'Essay ready ('+cachedEssay.palavras+' words)':'No essay cached';contentArea.appendChild(sl);
 }
 
 function testAPI(provider,key,callback){
 if(provider==='gemini'){
 var url='https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key='+key;
-fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:'Say "OK" in one word'}]}]})}).then(function(r){callback(r.ok,'Status: '+r.status)}).catch(function(e){callback(false,e.message)});
+fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:'Say OK'}]}]})}).then(function(r){callback(r.ok,'Status: '+r.status)}).catch(function(e){callback(false,e.message)});
 }else{
 var endpoint=aiEndpoints[provider]||aiEndpoints.mistral;
 var headers={'Content-Type':'application/json','Authorization':'Bearer '+key};
@@ -260,10 +253,7 @@ var savedSelect=d.createElement('select');savedSelect.style.cssText='width:100%;
 var emptyOpt=d.createElement('option');emptyOpt.value='';emptyOpt.textContent='Select API...';savedSelect.appendChild(emptyOpt);
 apiKeys.forEach(function(k){var st=ia[k].Status||'unknown';var statusIcon=st==='ok'?' [OK]':st==='fail'?' [FAIL]':'';var o=d.createElement('option');o.value=k;o.textContent=ia[k].Name+' - '+ia[k].Provider+statusIcon;if(k===settings.lastAPIKey)o.selected=true;savedSelect.appendChild(o)});
 savedSelect.addEventListener('change',function(){settings.lastAPIKey=this.value;saveSettings(settings);cachedEssay=null;notify('API selected','info',2000)});contentArea.appendChild(savedSelect);
-var btnRow=d.createElement('div');btnRow.style.cssText='display:flex;gap:6px;margin-bottom:12px;';
-var testBtn=d.createElement('button');testBtn.textContent='Test API';testBtn.style.cssText='flex:1;height:32px;border-radius:8px;font-size:11px;cursor:pointer;font-family:Inter,sans-serif;transition:0.2s;border:1px solid #1a1a2a;background:transparent;color:#888;';testBtn.addEventListener('mouseenter',function(){testBtn.style.borderColor='#444';testBtn.style.color='#bbb'});testBtn.addEventListener('mouseleave',function(){testBtn.style.borderColor='#1a1a2a';testBtn.style.color='#888'});
-testBtn.addEventListener('click',function(){var sel=savedSelect.value;if(!sel)return;var api=ia[sel];testBtn.textContent='Testing...';testBtn.style.pointerEvents='none';testAPI(api.Provider,api.API,function(ok,msg){testBtn.textContent='Test API';testBtn.style.pointerEvents='auto';var status=ok?'ok':'fail';var u={};u['IA/'+sel+'/Status']=status;saveUserData(u,function(){notify(ok?'API working!':'API failed: '+msg,ok?'success':'error',4000);showAPI()})})});
-btnRow.appendChild(testBtn);contentArea.appendChild(btnRow);var divider=d.createElement('div');divider.style.cssText='border-top:1px solid #1a1a1a;margin:8px 0;';contentArea.appendChild(divider);
+var divider=d.createElement('div');divider.style.cssText='border-top:1px solid #1a1a1a;margin:8px 0;';contentArea.appendChild(divider);
 }
 var addLabel=d.createElement('label');addLabel.style.cssText='font-size:11px;color:#666;display:block;margin-bottom:4px;font-family:Inter,sans-serif;';addLabel.textContent='Add API';contentArea.appendChild(addLabel);
 var nameInput=d.createElement('input');nameInput.type='text';nameInput.placeholder='API Name';nameInput.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;transition:0.2s;box-sizing:border-box;margin-bottom:6px;';contentArea.appendChild(nameInput);
@@ -271,7 +261,11 @@ var apiRow=d.createElement('div');apiRow.style.cssText='display:flex;gap:6px;ali
 var pasteBtn=d.createElement('button');pasteBtn.style.cssText='width:36px;height:36px;border-radius:8px;cursor:pointer;border:1px solid #2a2a2a;background:transparent;display:flex;align-items:center;justify-content:center;transition:0.2s;flex-shrink:0;';pasteBtn.addEventListener('mouseenter',function(){pasteBtn.style.borderColor='#444'});pasteBtn.addEventListener('mouseleave',function(){pasteBtn.style.borderColor='#2a2a2a'});pasteBtn.addEventListener('click',function(){navigator.clipboard.readText().then(function(t){apiInput.value=t})});var pasteIcon=d.createElement('i');pasteIcon.className='bx bx-paste';pasteIcon.style.cssText='font-size:16px;color:#888;';pasteBtn.appendChild(pasteIcon);apiRow.appendChild(apiInput);apiRow.appendChild(pasteBtn);contentArea.appendChild(apiRow);
 var provLabel=d.createElement('label');provLabel.style.cssText='font-size:11px;color:#666;display:block;margin-bottom:4px;font-family:Inter,sans-serif;';provLabel.textContent='Provider';contentArea.appendChild(provLabel);
 var providerSelect=d.createElement('select');providerSelect.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;cursor:pointer;box-sizing:border-box;margin-bottom:8px;';Object.keys(aiProviders).forEach(function(k){var o=d.createElement('option');o.value=k;o.textContent=aiProviders[k];providerSelect.appendChild(o)});contentArea.appendChild(providerSelect);
-var addBtn=d.createElement('button');addBtn.textContent='Add API';addBtn.style.cssText='width:100%;height:38px;border-radius:10px;font-size:12px;font-weight:500;cursor:pointer;font-family:Inter,sans-serif;transition:0.3s;border:1px solid #2a2a2a;background:transparent;color:#888;';addBtn.addEventListener('mouseenter',function(){addBtn.style.borderColor='#444';addBtn.style.color='#bbb'});addBtn.addEventListener('mouseleave',function(){addBtn.style.borderColor='#2a2a2a';addBtn.style.color='#888'});addBtn.addEventListener('click',function(){var name=nameInput.value;var key=apiInput.value;var prov=providerSelect.value;if(!name||!key){notify('Fill all fields','error',2000);return}var id='api_'+Date.now();var u={};u['IA/'+id]={Name:name,API:key,Provider:aiProviders[prov],Status:'unknown'};saveUserData(u,function(){nameInput.value='';apiInput.value='';settings.lastAPIKey=id;saveSettings(settings);notify('API saved','success',4000);showAPI()})});contentArea.appendChild(addBtn);
+var btnRow=d.createElement('div');btnRow.style.cssText='display:flex;gap:6px;';
+var addBtn=d.createElement('button');addBtn.textContent='Add';addBtn.style.cssText='flex:1;height:36px;border-radius:10px;font-size:12px;font-weight:500;cursor:pointer;font-family:Inter,sans-serif;transition:0.3s;border:1px solid #2a2a2a;background:transparent;color:#888;';addBtn.addEventListener('mouseenter',function(){addBtn.style.borderColor='#444';addBtn.style.color='#bbb'});addBtn.addEventListener('mouseleave',function(){addBtn.style.borderColor='#2a2a2a';addBtn.style.color='#888'});addBtn.addEventListener('click',function(){var name=nameInput.value;var key=apiInput.value;var prov=providerSelect.value;if(!name||!key){notify('Fill all fields','error',2000);return}var id='api_'+Date.now();var u={};u['IA/'+id]={Name:name,API:key,Provider:aiProviders[prov],Status:'unknown'};saveUserData(u,function(){nameInput.value='';apiInput.value='';settings.lastAPIKey=id;saveSettings(settings);notify('API saved','success',4000);showAPI()})});
+var testBtn=d.createElement('button');testBtn.textContent='Test';testBtn.style.cssText='flex:1;height:36px;border-radius:10px;font-size:12px;font-weight:500;cursor:pointer;font-family:Inter,sans-serif;transition:0.3s;border:1px solid #1a1a2a;background:transparent;color:#888;';testBtn.addEventListener('mouseenter',function(){testBtn.style.borderColor='#444';testBtn.style.color='#bbb'});testBtn.addEventListener('mouseleave',function(){testBtn.style.borderColor='#1a1a2a';testBtn.style.color='#888'});
+testBtn.addEventListener('click',function(){var prov=providerSelect.value;var key=apiInput.value;if(!key){notify('Enter API key first','error',2000);return}testBtn.textContent='...';testBtn.style.pointerEvents='none';testAPI(prov,key,function(ok,msg){testBtn.textContent='Test';testBtn.style.pointerEvents='auto';notify(ok?'API working!':'API failed: '+msg,ok?'success':'error',4000)})});
+btnRow.appendChild(addBtn);btnRow.appendChild(testBtn);contentArea.appendChild(btnRow);
 }
 
 var toolsTab,apiTab;
