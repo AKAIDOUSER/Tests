@@ -133,15 +133,55 @@ settings.typingSpeed=settings.typingSpeed||50;
 settings.essayTopic=settings.essayTopic||'';
 settings.lastAPIKey=settings.lastAPIKey||'';
 function getPropostaData(callback){
-var token=localStorage.getItem('Token');if(!token){callback(null);return}
-var url=window.location.href;var match=url.match(/\/student-write-essay\/(\d+)\/(\d+)/);
-if(!match){callback(null);return}
-var propostaId=match[1];var studentId=match[2];
-fetch('https://redacao-api.pr.gov.br/api/v2/proposta/'+propostaId+'/estudante/'+studentId,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}}).then(function(r){return r.json()}).then(function(data){
-if(data&&data.proposta){propostaData=data;essayTheme=data.proposta.descTema;settings.essayTopic=data.proposta.descTema;saveSettings(settings);callback(data)}
-else if(data&&data.descTema){propostaData={proposta:data};essayTheme=data.descTema;settings.essayTopic=data.descTema;saveSettings(settings);callback(propostaData)}
-else{callback(null)}
-}).catch(function(){callback(null)})
+  var tema=null,minP=150,maxP=500,genero='Redação';
+  
+  // Tenta API primeiro
+  var token=localStorage.getItem('Token');
+  var url=window.location.href;
+  var match=url.match(/\/student-write-essay\/(\d+)\/(\d+)/);
+  
+  if(token&&match){
+    var propostaId=match[1];var studentId=match[2];
+    fetch('https://redacao-api.pr.gov.br/api/v2/proposta/'+propostaId+'/estudante/'+studentId,{headers:{'Authorization':'Bearer '+token,'Accept':'application/json'}}).then(function(r){return r.json()}).then(function(data){
+      if(data&&data.proposta){propostaData=data;extractFromPage(callback)}
+      else{extractFromPage(callback)}
+    }).catch(function(){extractFromPage(callback)});
+  }else{
+    extractFromPage(callback);
+  }
+  
+  function extractFromPage(cb){
+    // Pega das divs MuiBox-root css-skkg69
+    var boxes=d.querySelectorAll('.MuiBox-root.css-skkg69');
+    for(var i=0;i<boxes.length;i++){
+      var ps=boxes[i].querySelectorAll('p.MuiTypography-root.MuiTypography-body2');
+      for(var j=0;j<ps.length;j++){
+        var txt=ps[j].textContent.trim();
+        
+        // Pega tema
+        if(txt.toUpperCase().indexOf('TEMA:')===0||txt.toUpperCase().indexOf('TEMA:')>0){
+          tema=txt.replace(/TEMA:\s*/i,'').replace(/[""]/g,'').trim();
+          // Remove o final com série/tri/ano
+          tema=tema.replace(/[-–]\s*\d+ª.*$/,'').trim();
+          if(!tema||tema.length<3)tema=null;
+        }
+        
+        // Pega palavras
+        if(txt.toUpperCase().indexOf('DE ')>-1&&txt.toUpperCase().indexOf('ATÉ')>-1&&txt.toUpperCase().indexOf('PALAVRAS')>-1){
+          var nums=txt.match(/(\d+)\s*AT[ÉE]\s*(\d+)/i);
+          if(nums){minP=parseInt(nums[1]);maxP=parseInt(nums[2])}
+        }
+      }
+    }
+    
+    if(tema){
+      propostaData={proposta:{descTema:tema,descGenero:genero,minPalvra:minP,maxPalavra:maxP}};
+      essayTheme=tema;settings.essayTopic=tema;saveSettings(settings);
+      if(cb)cb(propostaData);
+    }else{
+      if(cb)cb(null);
+    }
+  }
 }
 function getSelectedAPI(){var ia=userData&&userData.IA?userData.IA:{};var keys=Object.keys(ia);if(settings.lastAPIKey&&ia[settings.lastAPIKey])return ia[settings.lastAPIKey];for(var i=0;i<keys.length;i++){if(ia[keys[i]].Status==='ok')return ia[keys[i]]}return null}
 function detectarCampoTitulo(){var inputs=d.querySelectorAll('input.MuiOutlinedInput-input, input.MuiInputBase-input');for(var i=0;i<inputs.length;i++){if(inputs[i].type==='text'&&!inputs[i].placeholder)return inputs[i]}var todos=d.querySelectorAll('input[type="text"]');for(var i=0;i<todos.length;i++){if(!todos[i].value&&!todos[i].placeholder)return todos[i]}return null}
@@ -198,14 +238,10 @@ var info=propostaData?(propostaData.proposta||propostaData):null;
 if(info&&info.descTema){
 tl.textContent='Tema: '+info.descTema+' ('+(info.descGenero||'Redação')+' • '+(info.minPalvra||150)+'-'+(info.maxPalavra||500)+' palavras)';
 }else{
-tl.textContent='Tema: '+(essayTheme||'Digite o tema abaixo');
+tl.textContent='Tema: '+(essayTheme||'Não detectado');
 }
 tc.appendChild(tl);
-var ti=d.createElement('input');ti.type='text';ti.value=essayTheme||'';ti.placeholder='Tema da redação...';
-ti.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;transition:0.2s;box-sizing:border-box;';
-ti.addEventListener('focus',function(){ti.style.borderColor='#444'});ti.addEventListener('blur',function(){ti.style.borderColor='#1a1a1a'});
-ti.addEventListener('input',function(){essayTheme=this.value;settings.essayTopic=this.value;cachedEssay=null;saveSettings(settings);tl.textContent='Tema: '+this.value});
-tc.appendChild(ti);contentArea.appendChild(tc);
+contentArea.appendChild(tc);
 contentArea.appendChild(createSlider('Velocidade',10,200,settings.typingSpeed,function(v){settings.typingSpeed=v;saveSettings(settings)}));
 var sl=d.createElement('div');sl.style.cssText='font-size:11px;color:#555;font-family:Inter,sans-serif;margin-top:4px;';
 sl.textContent=cachedEssay?'Redação pronta ('+cachedEssay.palavras+' palavras)':'Nenhuma redação no cache';contentArea.appendChild(sl);
@@ -241,7 +277,14 @@ function buildUI(){
 toolsTab=createTab('Tools',true,function(){toolsTab.style.color='#fff';toolsTab.style.borderColor='#2a2a2a';apiTab.style.color='#666';apiTab.style.borderColor='transparent';showTools()});
 apiTab=createTab('API',false,function(){apiTab.style.color='#fff';apiTab.style.borderColor='#2a2a2a';toolsTab.style.color='#666';toolsTab.style.borderColor='transparent';showAPI()});
 tabContainer.innerHTML='';tabContainer.appendChild(toolsTab);tabContainer.appendChild(apiTab);menuContainer.appendChild(tabContainer);menuContainer.appendChild(contentArea);d.body.appendChild(menuContainer);showTools();floatBtn.style.display='flex';
-getPropostaData(function(data){if(data){var p=data.proposta||data;essayTheme=p.descTema;settings.essayTopic=p.descTema;saveSettings(settings);notify('Proposta: '+p.descTema+' ('+p.minPalvra+'-'+p.maxPalavra+' palavras)','success',4000);showTools();preGerarRedacao()}});
+getPropostaData(function(data){
+if(data){
+var p=data.proposta||data;
+notify('Proposta: '+p.descTema+' ('+(p.minPalvra||150)+'-'+(p.maxPalavra||500)+' palavras)','success',4000);
+showTools();
+preGerarRedacao();
+}else{notify('Tema não encontrado','info',4000);showTools()}
+});
 }
 authenticate(function(user){buildUI();notify('Menu pronto','success',3000)});
 })();
