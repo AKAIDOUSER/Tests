@@ -139,8 +139,8 @@ function getSelectedAPI(){var ia=userData&&userData.IA?userData.IA:{};var keys=O
 function detectarCampoTitulo(){var inputs=d.querySelectorAll('input.MuiOutlinedInput-input, input.MuiInputBase-input');for(var i=0;i<inputs.length;i++){if(inputs[i].type==='text'&&!inputs[i].placeholder)return inputs[i]}var todos=d.querySelectorAll('input[type="text"]');for(var i=0;i<todos.length;i++){if(!todos[i].value&&!todos[i].placeholder)return todos[i]}return null}
 function detectarCampoRedacao(){var textareas=d.querySelectorAll('textarea');for(var i=0;i<textareas.length;i++){var ph=(textareas[i].placeholder||'').toLowerCase();if(ph.includes('comece')||ph.includes('escreva')||ph.includes('reda'))return textareas[i]}for(var i=0;i<textareas.length;i++){if(textareas[i].offsetParent!==null)return textareas[i]}return null}
 function limparCampos(){var ct=detectarCampoTitulo();var cr=detectarCampoRedacao();if(ct){ct.value='';ct.dispatchEvent(new Event('input',{bubbles:true}))}if(cr){cr.value='';cr.dispatchEvent(new Event('input',{bubbles:true}))}}
-async function gerarComIA(tema,minPalavras,maxPalavras,genero){
-var api=getSelectedAPI();if(!api){notify('No API configured','error',3000);return null}
+async function gerarComIA(tema,minPalavras,maxPalavras,genero,api){
+if(!api)api=getSelectedAPI();if(!api){notify('No API configured','error',3000);return null}
 tema=limparTema(tema);
 var prompt='Voce e um estudante brasileiro. Escreva uma redacao em PORTUGUES sobre: '+tema+'\nGenero: '+genero+'\nPalavras: '+minPalavras+' a '+maxPalavras+'\n\nREGRAS:\n1. APENAS portugues\n2. Sem asteriscos ou aspas\n3. Formato:\nTITULO: [titulo]\nTEXTO: [redacao com introducao, desenvolvimento e conclusao]';
 var provKey=api.Provider.toLowerCase();var endpoint=aiEndpoints[provKey]||aiEndpoints.mistral;var headers={'Content-Type':'application/json'};var body={};
@@ -174,11 +174,15 @@ if(i<texto.length){var ch=texto[i++];try{if(isInput){var pos=el.selectionStart||
 digitar();
 }
 function encontrarBotaoSalvar(){var botoes=d.querySelectorAll('button');for(var i=0;i<botoes.length;i++){if(/(salvar|save|enviar|publicar)/i.test(botoes[i].textContent))return botoes[i]}return d.querySelector('button[type="submit"]')}
-async function preGerarRedacao(){
-if(!propostaData){notify('Theme not detected','info',3000);return}
-var p=propostaData.proposta||propostaData;var tema=p.descTema||'';var genero=p.descGenero||'Dissertação';var minP=p.minPalvra||150;var maxP=p.maxPalavra||500;
-if(!tema)return;tema=limparTema(tema);essayTheme=tema;
-var resultado=await gerarComIA(tema,minP,maxP,genero);
+async function preGerarRedacao(temaManual){
+var tema=temaManual||(propostaData?(propostaData.proposta||propostaData).descTema:'')||essayTheme;
+if(!tema){notify('No theme','info',3000);return}
+var genero=(propostaData?(propostaData.proposta||propostaData).descGenero:'')||'Dissertação';
+var minP=(propostaData?(propostaData.proposta||propostaData).minPalvra:0)||150;
+var maxP=(propostaData?(propostaData.proposta||propostaData).maxPalavra:0)||500;
+tema=limparTema(tema);essayTheme=tema;
+var api=getSelectedAPI();
+var resultado=await gerarComIA(tema,minP,maxP,genero,api);
 if(resultado){cachedEssay=resultado;if(menuOpen)showTools()}
 }
 async function executarDigitador(){
@@ -208,7 +212,9 @@ var ti=d.createElement('input');ti.type='text';ti.value=essayTheme||'';ti.placeh
 ti.style.cssText='flex:1;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;transition:0.2s;box-sizing:border-box;';
 ti.addEventListener('focus',function(){ti.style.borderColor='#444'});ti.addEventListener('blur',function(){ti.style.borderColor='#1a1a1a'});
 ti.addEventListener('input',function(){essayTheme=this.value;cachedEssay=null});
-var genBtn=d.createElement('button');genBtn.style.cssText='width:36px;height:36px;border-radius:8px;cursor:pointer;border:1px solid #1a2a1a;background:transparent;display:flex;align-items:center;justify-content:center;transition:0.2s;flex-shrink:0;';genBtn.addEventListener('mouseenter',function(){genBtn.style.borderColor='#28c840'});genBtn.addEventListener('mouseleave',function(){genBtn.style.borderColor='#1a2a1a'});genBtn.addEventListener('click',function(){if(!essayTheme){notify('No theme','error',2000);return}cachedEssay=null;preGerarRedacao().then(function(){if(cachedEssay){notify('Essay ready!','success',3000);showTools()}})});var genIcon=d.createElement('i');genIcon.className='bx bxs-magic-wand';genIcon.style.cssText='font-size:16px;color:#28c840;';genBtn.appendChild(genIcon);
+var genBtn=d.createElement('button');genBtn.style.cssText='width:36px;height:36px;border-radius:8px;cursor:pointer;border:1px solid #1a2a1a;background:transparent;display:flex;align-items:center;justify-content:center;transition:0.2s;flex-shrink:0;';genBtn.addEventListener('mouseenter',function(){genBtn.style.borderColor='#28c840'});genBtn.addEventListener('mouseleave',function(){genBtn.style.borderColor='#1a2a1a'});
+genBtn.addEventListener('click',function(){var tema=ti.value||essayTheme;if(!tema){notify('No theme','error',2000);return}cachedEssay=null;preGerarRedacao(tema).then(function(){if(cachedEssay){notify('Essay ready!','success',3000);showTools()}})});
+var genIcon=d.createElement('i');genIcon.className='bx bxs-magic-wand';genIcon.style.cssText='font-size:16px;color:#28c840;';genBtn.appendChild(genIcon);
 themeRow.appendChild(ti);themeRow.appendChild(genBtn);tc.appendChild(themeRow);contentArea.appendChild(tc);
 contentArea.appendChild(createSlider('Typing Speed',10,200,settings.typingSpeed,function(v){settings.typingSpeed=v;saveSettings(settings)}));
 var sl=d.createElement('div');sl.style.cssText='font-size:11px;color:#555;font-family:Inter,sans-serif;margin-top:4px;';
@@ -223,22 +229,27 @@ function showAPI(){
 contentArea.innerHTML='';var ia=userData&&userData.IA?userData.IA:{};var apiKeys=Object.keys(ia);
 if(apiKeys.length>0){
 var savedLabel=d.createElement('label');savedLabel.style.cssText='font-size:11px;color:#666;display:block;margin-bottom:4px;font-family:Inter,sans-serif;';savedLabel.textContent='Saved APIs';contentArea.appendChild(savedLabel);
-var savedSelect=d.createElement('select');savedSelect.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;cursor:pointer;box-sizing:border-box;margin-bottom:12px;';
+var savedSelect=d.createElement('select');savedSelect.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;cursor:pointer;box-sizing:border-box;margin-bottom:8px;';
 var emptyOpt=d.createElement('option');emptyOpt.value='';emptyOpt.textContent='Select API...';savedSelect.appendChild(emptyOpt);
 apiKeys.forEach(function(k){var st=ia[k].Status||'unknown';var statusIcon=st==='ok'?' [OK]':st==='fail'?' [FAIL]':'';var o=d.createElement('option');o.value=k;o.textContent=ia[k].Name+' - '+ia[k].Provider+statusIcon;if(k===settings.lastAPIKey)o.selected=true;savedSelect.appendChild(o)});
 savedSelect.addEventListener('change',function(){settings.lastAPIKey=this.value;saveSettings(settings);cachedEssay=null;notify('API selected','info',2000)});contentArea.appendChild(savedSelect);
+var btnRow=d.createElement('div');btnRow.style.cssText='display:flex;gap:6px;margin-bottom:12px;';
+var testSavedBtn=d.createElement('button');testSavedBtn.textContent='Test Selected';testSavedBtn.style.cssText='flex:1;height:32px;border-radius:8px;font-size:11px;cursor:pointer;font-family:Inter,sans-serif;transition:0.2s;border:1px solid #1a1a2a;background:transparent;color:#888;';testSavedBtn.addEventListener('mouseenter',function(){testSavedBtn.style.borderColor='#444';testSavedBtn.style.color='#bbb'});testSavedBtn.addEventListener('mouseleave',function(){testSavedBtn.style.borderColor='#1a1a2a';testSavedBtn.style.color='#888'});
+testSavedBtn.addEventListener('click',function(){var sel=savedSelect.value;if(!sel){notify('Select an API first','error',2000);return}var api=ia[sel];testSavedBtn.textContent='...';testSavedBtn.style.pointerEvents='none';testAPI(api.Provider,api.API,function(ok,msg){testSavedBtn.textContent='Test Selected';testSavedBtn.style.pointerEvents='auto';var status=ok?'ok':'fail';var u={};u['IA/'+sel+'/Status']=status;saveUserData(u,function(){notify(ok?'API working!':'API failed: '+msg,ok?'success':'error',4000);showAPI()})})});
+btnRow.appendChild(testSavedBtn);contentArea.appendChild(btnRow);
+var divider=d.createElement('div');divider.style.cssText='border-top:1px solid #1a1a1a;margin:8px 0;';contentArea.appendChild(divider);
 }
-var addLabel=d.createElement('label');addLabel.style.cssText='font-size:11px;color:#666;display:block;margin-bottom:4px;font-family:Inter,sans-serif;';addLabel.textContent='Add / Test API';contentArea.appendChild(addLabel);
+var addLabel=d.createElement('label');addLabel.style.cssText='font-size:11px;color:#666;display:block;margin-bottom:4px;font-family:Inter,sans-serif;';addLabel.textContent='Add API';contentArea.appendChild(addLabel);
 var nameInput=d.createElement('input');nameInput.type='text';nameInput.placeholder='API Name';nameInput.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;transition:0.2s;box-sizing:border-box;margin-bottom:6px;';contentArea.appendChild(nameInput);
 var apiRow=d.createElement('div');apiRow.style.cssText='display:flex;gap:6px;align-items:flex-end;margin-bottom:6px;';var apiInput=d.createElement('input');apiInput.type='password';apiInput.placeholder='API Key';apiInput.style.cssText='flex:1;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;transition:0.2s;box-sizing:border-box;';
 var pasteBtn=d.createElement('button');pasteBtn.style.cssText='width:36px;height:36px;border-radius:8px;cursor:pointer;border:1px solid #2a2a2a;background:transparent;display:flex;align-items:center;justify-content:center;transition:0.2s;flex-shrink:0;';pasteBtn.addEventListener('mouseenter',function(){pasteBtn.style.borderColor='#444'});pasteBtn.addEventListener('mouseleave',function(){pasteBtn.style.borderColor='#2a2a2a'});pasteBtn.addEventListener('click',function(){navigator.clipboard.readText().then(function(t){apiInput.value=t})});var pasteIcon=d.createElement('i');pasteIcon.className='bx bx-paste';pasteIcon.style.cssText='font-size:16px;color:#888;';pasteBtn.appendChild(pasteIcon);apiRow.appendChild(apiInput);apiRow.appendChild(pasteBtn);contentArea.appendChild(apiRow);
 var provLabel=d.createElement('label');provLabel.style.cssText='font-size:11px;color:#666;display:block;margin-bottom:4px;font-family:Inter,sans-serif;';provLabel.textContent='Provider';contentArea.appendChild(provLabel);
 var providerSelect=d.createElement('select');providerSelect.style.cssText='width:100%;height:36px;background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:0 10px;font-size:12px;color:#999;outline:none;font-family:Inter,sans-serif;cursor:pointer;box-sizing:border-box;margin-bottom:8px;';Object.keys(aiProviders).forEach(function(k){var o=d.createElement('option');o.value=k;o.textContent=aiProviders[k];providerSelect.appendChild(o)});contentArea.appendChild(providerSelect);
-var btnRow=d.createElement('div');btnRow.style.cssText='display:flex;gap:6px;';
+var btnRow2=d.createElement('div');btnRow2.style.cssText='display:flex;gap:6px;';
 var addBtn=d.createElement('button');addBtn.textContent='Add';addBtn.style.cssText='flex:1;height:36px;border-radius:10px;font-size:12px;font-weight:500;cursor:pointer;font-family:Inter,sans-serif;transition:0.3s;border:1px solid #2a2a2a;background:transparent;color:#888;';addBtn.addEventListener('mouseenter',function(){addBtn.style.borderColor='#444';addBtn.style.color='#bbb'});addBtn.addEventListener('mouseleave',function(){addBtn.style.borderColor='#2a2a2a';addBtn.style.color='#888'});addBtn.addEventListener('click',function(){var name=nameInput.value;var key=apiInput.value;var prov=providerSelect.value;if(!name||!key){notify('Fill all fields','error',2000);return}var id='api_'+Date.now();var u={};u['IA/'+id]={Name:name,API:key,Provider:aiProviders[prov],Status:'unknown'};saveUserData(u,function(){nameInput.value='';apiInput.value='';settings.lastAPIKey=id;saveSettings(settings);notify('API saved','success',4000);showAPI()})});
 var testBtn=d.createElement('button');testBtn.textContent='Test';testBtn.style.cssText='flex:1;height:36px;border-radius:10px;font-size:12px;font-weight:500;cursor:pointer;font-family:Inter,sans-serif;transition:0.3s;border:1px solid #1a1a2a;background:transparent;color:#888;';testBtn.addEventListener('mouseenter',function(){testBtn.style.borderColor='#444';testBtn.style.color='#bbb'});testBtn.addEventListener('mouseleave',function(){testBtn.style.borderColor='#1a1a2a';testBtn.style.color='#888'});
 testBtn.addEventListener('click',function(){var prov=providerSelect.value;var key=apiInput.value;if(!key){notify('Enter API key first','error',2000);return}testBtn.textContent='...';testBtn.style.pointerEvents='none';testAPI(prov,key,function(ok,msg){testBtn.textContent='Test';testBtn.style.pointerEvents='auto';notify(ok?'API working!':'API failed: '+msg,ok?'success':'error',4000)})});
-btnRow.appendChild(addBtn);btnRow.appendChild(testBtn);contentArea.appendChild(btnRow);
+btnRow2.appendChild(addBtn);btnRow2.appendChild(testBtn);contentArea.appendChild(btnRow2);
 }
 var toolsTab,apiTab;
 function buildUI(){
