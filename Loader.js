@@ -351,9 +351,31 @@ var patentEl=d.createElement('div');patentEl.textContent=patent;patentEl.style.c
 infoDiv.appendChild(patentEl);
 
 profileRow.appendChild(infoDiv);
-contentArea.appendChild(profileRow);
+
+// Timer de expiração
+var plan=userData.Plan||{};
+var duracao=plan.Duracion;
+var timerDiv=d.createElement('div');timerDiv.style.cssText='font-size:9px;color:#555;font-family:Inter,sans-serif;text-align:right;flex-shrink:0;';
+
+function atualizarTimer(){
+if(!duracao||duracao===999999||duracao===0){timerDiv.textContent='Vitalício';return}
+var agora=Math.floor(Date.now()/1000);
+var restante=duracao-agora;
+if(restante<=0){timerDiv.textContent='Expirado';timerDiv.style.color='#ff4757';return}
+var d=Math.floor(restante/86400);
+var h=Math.floor((restante%86400)/3600);
+var m=Math.floor((restante%3600)/60);
+var s=restante%60;
+if(d>0){timerDiv.textContent=d+'d '+h+'h '+m+'m'}
+else if(h>0){timerDiv.textContent=h+'h '+m+'m '+s+'s'}
+else{timerDiv.textContent=m+'m '+s+'s'}
 }
-  
+atualizarTimer();
+setInterval(atualizarTimer,1000);
+
+profileRow.appendChild(timerDiv);
+contentArea.appendChild(profileRow);
+}  
 var toolsTab,apiTab,profileTab;
 function buildUI(){
 toolsTab=createTab('Tools',false,function(){currentTab='tools';toolsTab.style.color='#fff';toolsTab.style.borderColor='#2a2a2a';apiTab.style.color='#666';apiTab.style.borderColor='transparent';profileTab.style.color='#666';profileTab.style.borderColor='transparent';showTools()});
