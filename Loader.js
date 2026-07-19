@@ -123,8 +123,17 @@ var pauseFloatBtn=d.createElement('div');pauseFloatBtn.style.cssText='width:42px
 pauseFloatBtn.addEventListener('mouseenter',function(){pauseFloatBtn.style.borderColor='#444'});pauseFloatBtn.addEventListener('mouseleave',function(){pauseFloatBtn.style.borderColor='#1a1a1a'});
 var pauseFloatIcon=d.createElement('i');pauseFloatIcon.className='bx bx-pause';pauseFloatIcon.style.cssText='font-size:22px;color:#ff4757;';pauseFloatBtn.appendChild(pauseFloatIcon);
 pauseFloatBtn.addEventListener('click',function(e){e.stopPropagation();
-if(typingPaused){typingPaused=false;pauseFloatIcon.className='bx bx-pause';pauseFloatIcon.style.color='#ff4757';notify('Resumed','info',2000);if(typingSavedElement&&typingSavedText&&typingSavedIndex<typingSavedText.length){var el2=typingSavedElement;var txt2=typingSavedText;var cb2=typingSavedCallback;var idx2=typingSavedIndex;typingSavedElement=null;typingSavedText='';typingSavedCallback=null;typingSavedIndex=0;digitarRapido(el2,txt2.substring(idx2),0,cb2)}}
-else{typingPaused=true;if(currentTypingTimeout){clearTimeout(currentTypingTimeout);currentTypingTimeout=null}pauseFloatIcon.className='bx bx-play';pauseFloatIcon.style.color='#28c840';notify('Paused','info',2000)}
+if(typingPaused){
+typingPaused=false;
+pauseFloatIcon.className='bx bx-pause';pauseFloatIcon.style.color='#ff4757';
+notify('Resumed','info',2000);
+// Continua de onde parou - NÃO recria do zero
+}else{
+typingPaused=true;
+if(currentTypingTimeout){clearTimeout(currentTypingTimeout);currentTypingTimeout=null}
+pauseFloatIcon.className='bx bx-play';pauseFloatIcon.style.color='#28c840';
+notify('Paused','info',2000);
+}
 });
 
 floatContainer.appendChild(pauseFloatBtn);
@@ -192,20 +201,20 @@ typingSavedIndex=0;hidePauseBtn();
 }
 
 function digitarRapido(el,texto,totalPalavras,callback){
-if(progressBar){progressBar.remove();progressBar=null}
 typingActive=true;typingPaused=false;
 var i=typingSavedIndex||0;
 var palavras=texto.split(/\s+/).filter(function(p){return p.length>0}).length;
 typingSavedElement=el;typingSavedText=texto;typingSavedCallback=callback;
 var isInput=(el.tagName==='INPUT'||el.tagName==='TEXTAREA');
 try{if(isInput&&i===0){el.readOnly=false;el.focus();el.value='';el.dispatchEvent(new Event('input',{bubbles:true}))}}catch(e){}
+if(i>0&&isInput){try{el.setSelectionRange(i,i)}catch(e){}}
 showPauseBtn();pauseFloatIcon.className='bx bx-pause';pauseFloatIcon.style.color='#ff4757';
 progressBar=d.createElement('div');progressBar.style.cssText='position:fixed;bottom:40px;left:50%;transform:translateX(-50%);z-index:999999;background:#0d0d0d;border:1px solid #1a1a1a;border-radius:14px;padding:14px 20px;box-shadow:0 8px 32px rgba(0,0,0,0.6);font-family:Inter,sans-serif;display:flex;align-items:center;gap:12px;min-width:200px;';
 var progressIcon=d.createElement('span');progressIcon.className='bx bx-edit';progressIcon.style.cssText='font-size:20px;color:#28c840;animation:pulse 1.5s ease-in-out infinite;line-height:1;';
 var progressText=d.createElement('div');progressText.style.cssText='font-size:12px;color:#888;';progressText.textContent='Typing... 0/'+palavras+' words';
 progressBar.appendChild(progressIcon);progressBar.appendChild(progressText);d.body.appendChild(progressBar);
 function digitar(){
-if(!typingActive){if(progressBar){progressBar.remove();progressBar=null}return}
+if(!typingActive){if(progressBar){progressBar.remove();progressBar=null}hidePauseBtn();return}
 if(typingPaused){typingSavedIndex=i;return}
 if(i<texto.length){var ch=texto[i];i++;try{if(isInput){var pos=el.selectionStart||el.value.length;el.setRangeText(ch,pos,pos,'end')}else{el.textContent+=ch}el.dispatchEvent(new Event('input',{bubbles:true}));var digitadas=el.value?el.value.split(/\s+/).filter(function(p){return p.length>0}).length:0;progressText.textContent='Typing... '+digitadas+'/'+palavras+' words'}catch(e){}currentTypingTimeout=setTimeout(digitar,settings.typingSpeed||50)}else{typingSavedIndex=0;hidePauseBtn();progressIcon.className='bx bx-check-circle';progressIcon.style.color='#28c840';progressIcon.style.animation='none';progressText.textContent='Done! '+palavras+' words';setTimeout(function(){if(progressBar){progressBar.remove();progressBar=null}},1500);if(callback)callback()}
 }
