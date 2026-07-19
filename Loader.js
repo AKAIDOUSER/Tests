@@ -237,32 +237,61 @@ var patent=profile.Patent||'User';
 var username=profile.Username||'User';
 var firstLetter=username.charAt(0).toUpperCase();
 
-// Alertas no topo
-var alertsContainer=d.createElement('div');alertsContainer.style.cssText='margin-bottom:12px;max-height:180px;overflow-y:auto;';
-var alertsLabel=d.createElement('div');alertsLabel.style.cssText='font-size:10px;color:#555;font-family:Inter,sans-serif;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;';alertsLabel.textContent='Notifications';alertsContainer.appendChild(alertsLabel);
+// Carrossel de Cheats
+var carouselContainer=d.createElement('div');carouselContainer.style.cssText='margin-bottom:12px;position:relative;overflow:hidden;';
+var carouselLabel=d.createElement('div');carouselLabel.style.cssText='font-size:10px;color:#555;font-family:Inter,sans-serif;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;';carouselLabel.textContent='Cheats Status';carouselContainer.appendChild(carouselLabel);
 
-fetch(fb+'/Settings/Alerts.json?auth='+ak).then(function(r){return r.json()}).then(function(alerts){
-if(!alerts||Object.keys(alerts).length===0){
-var na=d.createElement('div');na.textContent='No notifications';na.style.cssText='font-size:10px;color:#444;font-family:Inter,sans-serif;text-align:center;padding:8px;';alertsContainer.appendChild(na);
-return;
-}
-Object.keys(alerts).forEach(function(k){
-var alert=alerts[k];if(!alert||!alert.Title)return;
-var now=Math.floor(Date.now()/1000);
-var parts=alert.CreateAt.split(' ');var dParts=parts[0].split('/');var hParts=parts[1]?parts[1].split(':'):['0','0'];
-var alertTime=Math.floor(new Date(dParts[2],dParts[1]-1,dParts[0],hParts[0]||0,hParts[1]||0,0).getTime()/1000);
-var duration=parseInt(alert['Duracion-Days'])||1;
-var expiresAt=alertTime+(duration*86400);
-if(now>expiresAt)return;
+var cardsWrapper=d.createElement('div');cardsWrapper.style.cssText='position:relative;width:100%;height:140px;overflow:hidden;';
+var cardsContainer=d.createElement('div');cardsContainer.style.cssText='display:flex;transition:transform 0.3s ease;height:100%;';
+cardsWrapper.appendChild(cardsContainer);
 
-var alertBox=d.createElement('div');alertBox.style.cssText='background:#111;border:1px solid #1a1a1a;border-radius:8px;padding:8px 10px;margin-bottom:6px;';
-var alertTitle=d.createElement('div');alertTitle.textContent=alert.Title;alertTitle.style.cssText='font-size:10px;color:#ccc;font-family:Inter,sans-serif;font-weight:500;';
-alertBox.appendChild(alertTitle);
-if(alert.Description){var alertDesc=d.createElement('div');alertDesc.textContent=alert.Description;alertDesc.style.cssText='font-size:9px;color:#555;font-family:Inter,sans-serif;margin-top:2px;';alertBox.appendChild(alertDesc)}
-alertsContainer.appendChild(alertBox);
+var dotsContainer=d.createElement('div');dotsContainer.style.cssText='display:flex;justify-content:center;gap:4px;margin-top:8px;';
+
+var currentCard=0;
+var cards=[];
+
+fetch(fb+'/Settings/Cheats.json?auth='+ak).then(function(r){return r.json()}).then(function(cheats){
+if(!cheats){return}
+var keys=Object.keys(cheats);
+if(keys.length===0){carouselContainer.appendChild(document.createElement('div')).textContent='No cheats';return}
+
+keys.forEach(function(name,i){
+var cheat=cheats[name];
+var card=d.createElement('div');card.style.cssText='min-width:100%;height:100%;position:relative;border-radius:10px;overflow:hidden;background:#111;border:1px solid #1a1a1a;';
+if(cheat['Image-Url']){card.style.backgroundImage='url('+cheat['Image-Url']+')';card.style.backgroundSize='cover';card.style.backgroundPosition='center'}
+var statusBadge=d.createElement('div');statusBadge.textContent=cheat.Status==='Working'?'Working':'Not Working';statusBadge.style.cssText='position:absolute;top:8px;right:8px;padding:4px 8px;border-radius:6px;font-size:9px;font-family:Inter,sans-serif;font-weight:500;background:rgba(0,0,0,0.7);color:'+(cheat.Status==='Working'?'#28c840':'#ff4757')+';border:1px solid '+(cheat.Status==='Working'?'#28c840':'#ff4757')+';';
+card.appendChild(statusBadge);
+var nameLabel=d.createElement('div');nameLabel.textContent=name;nameLabel.style.cssText='position:absolute;bottom:8px;left:8px;padding:4px 8px;border-radius:6px;font-size:10px;font-family:Inter,sans-serif;font-weight:500;background:rgba(0,0,0,0.7);color:#ccc;';
+card.appendChild(nameLabel);
+cardsContainer.appendChild(card);
+cards.push(card);
+
+var dot=d.createElement('div');dot.style.cssText='width:6px;height:6px;border-radius:50%;background:'+(i===0?'#888':'#2a2a2a')+';transition:0.2s;';
+dot.dataset.index=i;
+dot.addEventListener('click',function(){goToCard(parseInt(this.dataset.index))});
+dotsContainer.appendChild(dot);
 });
+
+function goToCard(index){
+currentCard=index;
+cardsContainer.style.transform='translateX(-'+(index*100)+'%)';
+var dots=dotsContainer.children;
+for(var i=0;i<dots.length;i++){dots[i].style.background=i===index?'#888':'#2a2a2a'}
+}
+
+var prevBtn=d.createElement('div');prevBtn.innerHTML='<span class="bx bx-chevron-left" style="font-size:20px;color:#888;line-height:1;"></span>';prevBtn.style.cssText='position:absolute;left:4px;top:50%;transform:translateY(-50%);z-index:2;cursor:pointer;width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);border-radius:50%;';
+prevBtn.addEventListener('click',function(e){e.stopPropagation();if(currentCard>0)goToCard(currentCard-1)});
+cardsWrapper.appendChild(prevBtn);
+
+var nextBtn=d.createElement('div');nextBtn.innerHTML='<span class="bx bx-chevron-right" style="font-size:20px;color:#888;line-height:1;"></span>';nextBtn.style.cssText='position:absolute;right:4px;top:50%;transform:translateY(-50%);z-index:2;cursor:pointer;width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);border-radius:50%;';
+nextBtn.addEventListener('click',function(e){e.stopPropagation();if(currentCard<cards.length-1)goToCard(currentCard+1)});
+cardsWrapper.appendChild(nextBtn);
+
+carouselContainer.appendChild(cardsWrapper);
+carouselContainer.appendChild(dotsContainer);
 }).catch(function(){});
-contentArea.appendChild(alertsContainer);
+
+contentArea.appendChild(carouselContainer);
 
 // Separador
 var divider2=d.createElement('div');divider2.style.cssText='border-top:1px solid #1a1a1a;margin:8px 0;';contentArea.appendChild(divider2);
@@ -274,7 +303,7 @@ var avatarLetter=d.createElement('span');avatarLetter.textContent=firstLetter;av
 avatarContainer.appendChild(avatarLetter);
 
 if(patent==='Premium'){var crownIcon=d.createElement('span');crownIcon.className='bx bx-crown';crownIcon.style.cssText='position:absolute;top:-10px;font-size:12px;color:#febc2e;line-height:1;';avatarContainer.appendChild(crownIcon);avatarContainer.style.borderColor='#febc2e'}
-else if(patent==='Developer'){var devIcon=d.createElement('span');devIcon.className='bx bx-code-alt';devIcon.style.cssText='position:absolute;top:-10px;font-size:12px;color:#8b5cf6;line-height:1;';avatarContainer.appendChild(devIcon);avatarContainer.style.borderColor='#8b5cf6'}
+else if(patent==='Developer'){var devIcon=d.createElement('span');devIcon.className='bx bx-code-alt';devIcon.style.cssText='position:absolute;top:-10px;font-size:12px;color:#febc2e;line-height:1;';avatarContainer.appendChild(devIcon);avatarContainer.style.borderColor='#febc2e'}
 else if(patent==='Admin'){var adminIcon=d.createElement('span');adminIcon.className='bx bx-shield-alt';adminIcon.style.cssText='position:absolute;top:-10px;font-size:12px;color:#ef4444;line-height:1;';avatarContainer.appendChild(adminIcon);avatarContainer.style.borderColor='#ef4444'}
 
 profileRow.appendChild(avatarContainer);
