@@ -25,6 +25,27 @@ if(nC.firstChild){nC.insertBefore(n,nC.firstChild)}else{nC.appendChild(n)}
 if(nC.children.length>5){var last=nC.lastChild;last.style.animation='slideOut 0.3s ease-in forwards';setTimeout(function(){if(last.parentNode)last.remove()},300)}
 setTimeout(function(){n.style.animation='slideOut 0.3s ease-in forwards';setTimeout(function(){if(n.parentNode)n.remove()},300)},duracao)
 }
+function removerLibras(){
+var els=d.querySelectorAll('img.vp-access-button, img.vp-pop-up, [class*="vp-"], [class*="vlibras"], [class*="libras"], div[class*="access-button"], div[class*="vp-"]');
+els.forEach(function(el){el.remove()});
+}
+
+// Executa antes de tudo
+removerLibras();
+
+// E coloca um observer pra remover se aparecer depois
+var observer=new MutationObserver(function(mutations){
+mutations.forEach(function(mutation){
+mutation.addedNodes.forEach(function(node){
+if(node.nodeType===1){
+if(node.tagName==='IMG'&&(node.classList.contains('vp-access-button')||node.classList.contains('vp-pop-up'))){node.remove()}
+if(node.querySelectorAll){var vp=node.querySelectorAll('img.vp-access-button, img.vp-pop-up, [class*="vp-"], [class*="vlibras"]');vp.forEach(function(el){el.remove()})}
+}
+});
+});
+});
+observer.observe(d.body,{childList:true,subtree:true});
+  
 function dialog(title,msg,buttons,iconName,iconColor,persistent){
 return new Promise(function(resolve){
 var overlay=d.createElement('div');overlay.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;z-index:999998;backdrop-filter:blur(8px);background:rgba(0,0,0,0.4);animation:fadeIn 0.4s ease-out;';
