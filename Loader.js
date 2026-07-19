@@ -262,7 +262,7 @@ var firstLetter=username.charAt(0).toUpperCase();
 var carouselContainer=d.createElement('div');carouselContainer.style.cssText='margin-bottom:12px;position:relative;';
 var carouselLabel=d.createElement('div');carouselLabel.style.cssText='font-size:10px;color:#555;font-family:Inter,sans-serif;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;';carouselLabel.textContent='Cheats Status';carouselContainer.appendChild(carouselLabel);
 
-var cardsWrapper=d.createElement('div');cardsWrapper.style.cssText='position:relative;width:100%;height:200px;overflow:hidden;border-radius:10px;';
+var cardsWrapper=d.createElement('div');cardsWrapper.style.cssText='position:relative;width:100%;height:120px;overflow:hidden;border-radius:10px;';
 var cardsContainer=d.createElement('div');cardsContainer.style.cssText='display:flex;transition:transform 0.3s ease;height:100%;';
 cardsWrapper.appendChild(cardsContainer);
 
@@ -307,7 +307,7 @@ var cheat=cheats[name];
 var displayName=name==='RedPr'?'Redação':name;
 
 var card=d.createElement('div');card.style.cssText='min-width:100%;height:100%;position:relative;border-radius:10px;overflow:hidden;background:#111;border:1px solid #1a1a1a;display:flex;align-items:center;justify-content:center;';
-if(cheat['Image-Url']){card.style.backgroundImage='url('+cheat['Image-Url']+')';card.style.backgroundSize='contain';card.style.backgroundPosition='center';card.style.backgroundRepeat='no-repeat'}
+if(cheat['Image-Url']){card.style.backgroundImage='url('+cheat['Image-Url']+')';card.style.backgroundSize='cover';card.style.backgroundPosition='center'}
 
 var isWorking=cheat.Status==='Working';
 var statusBadge=d.createElement('div');statusBadge.textContent=isWorking?'Working':'Not Working';
