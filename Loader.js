@@ -238,32 +238,48 @@ var username=profile.Username||'User';
 var firstLetter=username.charAt(0).toUpperCase();
 
 // Carrossel de Cheats
-var carouselContainer=d.createElement('div');carouselContainer.style.cssText='margin-bottom:12px;position:relative;overflow:hidden;';
+var carouselContainer=d.createElement('div');carouselContainer.style.cssText='margin-bottom:12px;position:relative;';
 var carouselLabel=d.createElement('div');carouselLabel.style.cssText='font-size:10px;color:#555;font-family:Inter,sans-serif;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;';carouselLabel.textContent='Cheats Status';carouselContainer.appendChild(carouselLabel);
 
-var cardsWrapper=d.createElement('div');cardsWrapper.style.cssText='position:relative;width:100%;height:120px;overflow:hidden;';
+var cardsWrapper=d.createElement('div');cardsWrapper.style.cssText='position:relative;width:100%;height:120px;overflow:hidden;border-radius:10px;';
 var cardsContainer=d.createElement('div');cardsContainer.style.cssText='display:flex;transition:transform 0.3s ease;height:100%;';
 cardsWrapper.appendChild(cardsContainer);
 
 var dotsContainer=d.createElement('div');dotsContainer.style.cssText='display:flex;justify-content:center;gap:4px;margin-top:8px;';
 
 var currentCard=0;
+var totalCards=0;
 
-function updateDots(index){
+function updateDots(){
 var dots=dotsContainer.children;
-for(var i=0;i<dots.length;i++){dots[i].style.background=i===index?'#888':'#2a2a2a'}
+for(var i=0;i<dots.length;i++){dots[i].style.background=i===currentCard?'#888':'#2a2a2a'}
 }
 
 function goToCard(index){
+if(index<0||index>=totalCards)return;
 currentCard=index;
 cardsContainer.style.transform='translateX(-'+(index*100)+'%)';
-updateDots(index);
+updateDots();
 }
+
+var prevBtn=d.createElement('div');prevBtn.innerHTML='<span class="bx bx-chevron-left" style="font-size:18px;color:#fff;line-height:1;"></span>';prevBtn.style.cssText='position:absolute;left:4px;top:50%;transform:translateY(-50%);z-index:2;cursor:pointer;width:24px;height:24px;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);border-radius:50%;';
+prevBtn.addEventListener('click',function(e){e.stopPropagation();if(currentCard>0)goToCard(currentCard-1)});
+cardsWrapper.appendChild(prevBtn);
+
+var nextBtn=d.createElement('div');nextBtn.innerHTML='<span class="bx bx-chevron-right" style="font-size:18px;color:#fff;line-height:1;"></span>';nextBtn.style.cssText='position:absolute;right:4px;top:50%;transform:translateY(-50%);z-index:2;cursor:pointer;width:24px;height:24px;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);border-radius:50%;';
+nextBtn.addEventListener('click',function(e){e.stopPropagation();if(currentCard<totalCards-1)goToCard(currentCard+1)});
+cardsWrapper.appendChild(nextBtn);
+
+carouselContainer.appendChild(cardsWrapper);
+carouselContainer.appendChild(dotsContainer);
+contentArea.appendChild(carouselContainer);
 
 fetch(fb+'/Settings/Cheats.json?auth='+ak).then(function(r){return r.json()}).then(function(cheats){
 if(!cheats){return}
 var keys=Object.keys(cheats);
-if(keys.length===0){return}
+totalCards=keys.length;
+if(totalCards===0)return;
+if(totalCards>1){prevBtn.style.display='flex';nextBtn.style.display='flex'}
 
 keys.forEach(function(name,i){
 var cheat=cheats[name];
@@ -272,13 +288,11 @@ var displayName=name==='RedPr'?'Redação':name;
 var card=d.createElement('div');card.style.cssText='min-width:100%;height:100%;position:relative;border-radius:10px;overflow:hidden;background:#111;border:1px solid #1a1a1a;display:flex;align-items:center;justify-content:center;';
 if(cheat['Image-Url']){card.style.backgroundImage='url('+cheat['Image-Url']+')';card.style.backgroundSize='cover';card.style.backgroundPosition='center'}
 
-// Status badge - sem stroke, fundo transparente colorido
 var isWorking=cheat.Status==='Working';
 var statusBadge=d.createElement('div');statusBadge.textContent=isWorking?'Working':'Not Working';
 statusBadge.style.cssText='position:absolute;top:6px;right:6px;padding:2px 6px;border-radius:4px;font-size:8px;font-family:Inter,sans-serif;font-weight:500;background:'+(isWorking?'rgba(40,200,64,0.2)':'rgba(255,71,87,0.2)')+';color:'+(isWorking?'#28c840':'#ff4757')+';';
 card.appendChild(statusBadge);
 
-// Nome do cheat - mais transparente
 var nameLabel=d.createElement('div');nameLabel.textContent=displayName;
 nameLabel.style.cssText='position:absolute;bottom:6px;left:6px;padding:2px 6px;border-radius:4px;font-size:9px;font-family:Inter,sans-serif;font-weight:500;background:rgba(0,0,0,0.5);color:rgba(204,204,204,0.7);';
 card.appendChild(nameLabel);
@@ -290,20 +304,7 @@ dot.addEventListener('click',function(){goToCard(parseInt(this.dataset.index))})
 dot.dataset.index=i;
 dotsContainer.appendChild(dot);
 });
-
-var prevBtn=d.createElement('div');prevBtn.innerHTML='<span class="bx bx-chevron-left" style="font-size:18px;color:#888;line-height:1;"></span>';prevBtn.style.cssText='position:absolute;left:4px;top:50%;transform:translateY(-50%);z-index:2;cursor:pointer;width:24px;height:24px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);border-radius:50%;';
-prevBtn.addEventListener('click',function(e){e.stopPropagation();if(currentCard>0)goToCard(currentCard-1)});
-cardsWrapper.appendChild(prevBtn);
-
-var nextBtn=d.createElement('div');nextBtn.innerHTML='<span class="bx bx-chevron-right" style="font-size:18px;color:#888;line-height:1;"></span>';nextBtn.style.cssText='position:absolute;right:4px;top:50%;transform:translateY(-50%);z-index:2;cursor:pointer;width:24px;height:24px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);border-radius:50%;';
-nextBtn.addEventListener('click',function(e){e.stopPropagation();if(currentCard<cards.length-1)goToCard(currentCard+1)});
-cardsWrapper.appendChild(nextBtn);
-
-carouselContainer.appendChild(cardsWrapper);
-carouselContainer.appendChild(dotsContainer);
 }).catch(function(){});
-
-contentArea.appendChild(carouselContainer);
 
 // Separador
 var divider2=d.createElement('div');divider2.style.cssText='border-top:1px solid #1a1a1a;margin:8px 0;';contentArea.appendChild(divider2);
@@ -314,11 +315,9 @@ var avatarContainer=d.createElement('div');avatarContainer.style.cssText='width:
 var avatarLetter=d.createElement('span');avatarLetter.textContent=firstLetter;avatarLetter.style.cssText='font-size:16px;font-weight:600;color:#888;font-family:Inter,sans-serif;';
 avatarContainer.appendChild(avatarLetter);
 
-// Coroa para Premium/Admin/Developer - torta na diagonal
 if(patent==='Premium'||patent==='Developer'||patent==='Admin'){
 var crownIcon=d.createElement('span');crownIcon.className='bx bx-crown';crownIcon.style.cssText='position:absolute;top:-10px;right:-4px;font-size:14px;color:#febc2e;line-height:1;transform:rotate(25deg);z-index:1;';
 avatarContainer.appendChild(crownIcon);
-if(patent==='Developer')crownIcon.style.color='#febc2e';
 if(patent==='Admin')crownIcon.style.color='#ef4444';
 }
 
@@ -333,7 +332,7 @@ infoDiv.appendChild(patentEl);
 profileRow.appendChild(infoDiv);
 contentArea.appendChild(profileRow);
 }
-
+  
 var toolsTab,apiTab,profileTab;
 function buildUI(){
 toolsTab=createTab('Tools',false,function(){currentTab='tools';toolsTab.style.color='#fff';toolsTab.style.borderColor='#2a2a2a';apiTab.style.color='#666';apiTab.style.borderColor='transparent';profileTab.style.color='#666';profileTab.style.borderColor='transparent';showTools()});
